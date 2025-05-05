@@ -9,16 +9,19 @@ export default function SearchForm({ onSearch }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mb-4 flex">
+    <form onSubmit={handleSubmit} className="flex">
       <input
         type="text"
         maxLength={4}
         value={code}
         onChange={(e) => setCode(e.target.value)}
         placeholder="Enter ICAO code e.g. KJFK"
-        className="border rounded-l px-3 py-2 w-32"
+        className="border border-transparent rounded-l px-3 py-1 w-36 text-gray-800 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
       />
-      <button type="submit" className="bg-blue-600 text-white px-4 rounded-r">
+      <button 
+        type="submit" 
+        className="bg-blue-400 hover:bg-blue-500 text-white text-sm px-3 py-1 rounded-r"
+      >
         Search
       </button>
     </form>

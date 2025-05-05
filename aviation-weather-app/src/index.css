@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 :root {
+  --primary-blue: #0c3b6b;
+  --secondary-blue: #1a5ba5;
+  --light-blue: #e8f0fe;
+
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
@@ -28,10 +32,61 @@ a:hover {
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background-color: #f8f9fa;
+  color: #333;
+}
+
+.navbar {
+  background-color: var(--primary-blue);
+  color: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700&display=swap');
+
+.navbar h1 {
+  font-family: 'Inter', sans-serif;
+  letter-spacing: -0.5px;
+}
+
+.btn-primary {
+  background-color: var(--primary-blue);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--secondary-blue);
+}
+
+.favorite-btn {
+  color: #ccc;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.favorite-btn.active {
+  color: #ffc107;
+}
+
+.favorite-btn:hover {
+  color: #ffc107;
+}
+
+/* Animations */
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out forwards;
 }
 
 h1 {

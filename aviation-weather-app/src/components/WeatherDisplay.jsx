@@ -1,12 +1,34 @@
-export default function WeatherDisplay({ metar, taf }) {
+import { useState, useEffect } from 'react';
+
+export default function WeatherDisplay({ metar, taf, favorites, onToggleFavorite }) {
+  const [isFavorite, setIsFavorite] = useState(false);
   const windSpeed = metar.wind_speed_kt ? parseInt(metar.wind_speed_kt, 10) : 0;
   let windClass = 'text-green-600';
   if (windSpeed > 30) windClass = 'text-red-500';
   else if (windSpeed > 15) windClass = 'text-yellow-500';
 
+  useEffect(() => {
+    if (favorites && metar) {
+      setIsFavorite(favorites.includes(metar.station_id));
+    }
+  }, [favorites, metar]);
+
+  const handleToggleFavorite = () => {
+    onToggleFavorite(metar.station_id);
+    setIsFavorite(!isFavorite);
+  };
+
   return (
-    <div className="bg-white dark:bg-gray-800 p-4 rounded shadow mt-4">
-      <h2 className="text-xl font-bold mb-2">{metar.station_id} METAR</h2>
+    <div className="bg-white p-4 rounded shadow mt-4">
+      <div className="flex justify-between items-center mb-2">
+        <h2 className="text-xl font-bold">{metar.station_id} METAR</h2>
+        <button 
+          onClick={handleToggleFavorite}
+          className={`favorite-btn text-xl ${isFavorite ? 'active' : ''}`}
+        >
+          ★
+        </button>
+      </div>
       <p className="font-mono whitespace-pre-wrap">{metar.raw_text}</p>
       <ul className="mt-2 list-disc list-inside space-y-1">
         <li><span className={windClass}>Wind: {metar.wind_dir_degrees}° &nbsp;@&nbsp; {metar.wind_speed_kt} kt</span></li>
