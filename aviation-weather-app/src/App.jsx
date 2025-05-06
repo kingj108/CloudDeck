@@ -19,34 +19,63 @@ function App() {
   const [activeTab, setActiveTab] = useState('weather');
   const [favorites, setFavorites] = useState([]);
   const [useMockData, setUseMockData] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
+  // Initialize API to use real data
+  useEffect(() => {
+    setApiMockData(false);
+  }, []);
+
   // Handle mock data toggle
   const handleToggleMockData = (value) => {
     setUseMockData(value);
-    setApiMockData(value);
+    // Clear any cached data when toggling
+    setMetar(null);
+    setTaf(null);
   };
   
   // Search handler
   const handleSearch = async (icao) => {
-    if (!icao) return;
+    if (!icao) {
+      setError('Please enter an airport code');
+      return;
+    }
     
-    console.log(`Searching for ${icao}`);
     setLoading(true);
     setError('');
     
     try {
-      // Fetch METAR data
-      const metarData = await fetchMetar(icao);
-      setMetar(metarData);
+      const [metarData, tafData] = await Promise.all([
+        fetchMetar(icao),
+        fetchTaf(icao)
+      ]);
       
-      // Fetch TAF data
-      const tafData = await fetchTaf(icao);
+      if (!metarData?.data?.[0]?.raw) {
+        throw new Error('Received empty weather data - using mock data instead');
+      }
+      
+      setMetar(metarData);
       setTaf(tafData);
     } catch (err) {
-      console.error('Error fetching weather data:', err);
-      setError(`Failed to fetch weather data: ${err.message}`);
+      console.error('Search error:', err);
+      setError(err.message);
+      
+      // Always show mock data when real data fails
+      setMetar(getMockMetar(icao));
+      setTaf(getMockTaf(icao));
     } finally {
       setLoading(false);
+    }
+  };
+  
+  // Refresh handler
+  const handleRefresh = async () => {
+    if (!metar?.data?.[0]?.station?.icao || isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      await handleSearch(metar.data[0].station.icao);
+    } finally {
+      setIsRefreshing(false);
     }
   };
   
@@ -69,10 +98,12 @@ function App() {
   } else if (activeTab === 'weather' && metar) {
     mainContent = (
       <WeatherDisplay 
-        metar={metar} 
-        taf={taf} 
-        isFavorite={favorites.includes(metar.icao)} 
-        onToggleFavorite={() => toggleFavorite(metar.icao)}
+        metar={metar?.data?.[0]} 
+        taf={taf?.data?.[0]}
+        isFavorite={favorites.includes(metar?.data?.[0]?.station?.icao)} 
+        onToggleFavorite={() => toggleFavorite(metar?.data?.[0]?.station?.icao)}
+        onRefresh={handleRefresh}
+        isRefreshing={isRefreshing}
       />
     );
   } else if (activeTab === 'map') {

@@ -1,6 +1,38 @@
-// Weather API service
-// Using Aviation Weather API from RapidAPI
-// https://rapidapi.com/aviation-weather-aviation-weather-default/api/aviation-weather
+// Weather API service with comprehensive debugging
+
+// Configuration
+const DEBUG_MODE = true;
+const API_CONFIG = {
+  endpoints: {
+    ADDS_METAR: 'https://aviationweather.gov/adds/dataserver_current/httpparam',
+    ADDS_TAF: 'https://aviationweather.gov/adds/dataserver_current/httpparam',
+    NOAA_METAR: 'https://aviationweather.gov/api/data/metar',
+    NOAA_TAF: 'https://aviationweather.gov/api/data/taf'
+  },
+  params: {
+    metar: {
+      dataSource: 'metars',
+      requestType: 'retrieve',
+      format: 'xml',
+      hoursBeforeNow: 3
+    },
+    taf: {
+      dataSource: 'tafs',
+      requestType: 'retrieve',
+      format: 'xml',
+      hoursBeforeNow: 3
+    }
+  },
+  retries: 3,
+  retryDelay: 1000,
+  timeout: 5000
+};
+
+// CORS proxy configuration
+const CORS_PROXY = 'https://cors-anywhere.herokuapp.com/';
+
+// Debug logging helper
+const debugLog = (...args) => DEBUG_MODE && console.log('[WEATHER API DEBUG]', ...args);
 
 // Flag to control whether to use mock data or real API data
 // Default to false to ensure real data is used by default
@@ -9,30 +41,11 @@ let useMockData = false;
 // Function to toggle mock data usage
 export function setUseMockData(value) {
   useMockData = value;
-  console.log(`Mock data mode ${useMockData ? 'enabled' : 'disabled'}`);
+  debugLog(`Mock data set to: ${value}`);
   // Clear cache when switching between real and mock data
   cache.clear();
   return useMockData;
 }
-
-// API key and host - using hardcoded values with fallback
-let API_KEY = '4b5e1026f1msh7355f41d799a8a4p1b9544jsn06d63a95a86f';
-let API_HOST = 'aviation-weather.p.rapidapi.com';
-
-// Try to get from environment variables if available
-try {
-  if (import.meta.env.VITE_RAPIDAPI_KEY) {
-    API_KEY = import.meta.env.VITE_RAPIDAPI_KEY;
-  }
-  if (import.meta.env.VITE_RAPIDAPI_HOST) {
-    API_HOST = import.meta.env.VITE_RAPIDAPI_HOST;
-  }
-} catch (error) {
-  console.warn('Unable to access environment variables, using defaults');
-}
-
-// Base URL for API endpoints
-const BASE_URL = `https://${API_HOST}`;
 
 // Simple in-memory cache
 const cache = {
@@ -93,70 +106,155 @@ const rateLimits = {
   }
 };
 
+const fetchWithRetry = async (url, options = {}, retries = API_CONFIG.retries) => {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.timeout);
+    
+    const response = await fetch(CORS_PROXY + url, {
+      ...options,
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response;
+  } catch (error) {
+    if (retries > 0) {
+      await new Promise(resolve => setTimeout(resolve, API_CONFIG.retryDelay));
+      return fetchWithRetry(url, options, retries - 1);
+    }
+    throw error;
+  }
+};
+
+const OPENWEATHER_API_KEY = 'YOUR_API_KEY';
+const OPENWEATHER_URL = 'https://api.openweathermap.org/data/3.0/station';
+
+const fetchOpenWeatherMap = async (icao) => {
+  try {
+    const response = await fetch(`${OPENWEATHER_URL}/${icao}/observations/current?appid=${OPENWEATHER_API_KEY}`);
+    const data = await response.json();
+    return {
+      raw: data.weather.raw,
+      station: {
+        icao: data.station.id,
+        name: data.station.name
+      }
+    };
+  } catch (error) {
+    console.error('OpenWeatherMap Error:', error);
+    return null;
+  }
+};
+
+const fetchAviationWeather = async (icao, type = 'metar') => {
+  const params = new URLSearchParams({
+    ...API_CONFIG.params[type],
+    stationString: icao
+  });
+
+  // Try ADDS API first
+  try {
+    const response = await fetchWithRetry(`${API_CONFIG.endpoints.ADDS_METAR}?${params}`);
+    const text = await response.text();
+    const xml = new DOMParser().parseFromString(text, 'text/xml');
+    const rawText = xml.querySelector('raw_text')?.textContent;
+    if (rawText) return rawText;
+  } catch (error) {
+    debugLog(`ADDS ${type.toUpperCase()} Error:`, error);
+  }
+
+  // Fallback to NOAA API
+  try {
+    const response = await fetchWithRetry(`${API_CONFIG.endpoints.NOAA_METAR}?ids=${icao}&format=json`);
+    const data = await response.json();
+    if (data[0]?.rawOb) return data[0].rawOb;
+  } catch (error) {
+    debugLog(`NOAA ${type.toUpperCase()} Error:`, error);
+  }
+
+  // Fallback to OpenWeatherMap API
+  try {
+    const openWeatherMapData = await fetchOpenWeatherMap(icao);
+    if (openWeatherMapData) return openWeatherMapData.raw;
+  } catch (error) {
+    debugLog(`OpenWeatherMap ${type.toUpperCase()} Error:`, error);
+  }
+
+  // Final fallback to direct text endpoint
+  try {
+    const response = await fetchWithRetry(`https://aviationweather.gov/api/data/${type}?ids=${icao}&format=raw`);
+    const rawText = (await response.text()).trim();
+    
+    if (!rawText || rawText === 'NO DATA') {
+      throw new Error('Empty raw response');
+    }
+    
+    return rawText;
+  } catch (error) {
+    debugLog(`Raw ${type.toUpperCase()} Error:`, error);
+    throw error;
+  }
+};
+
+const parseRawMetar = (raw) => {
+  return {
+    raw,
+    flight_category: raw.match(/CF\d+|CAVOK/) ? 'VFR' : 'UNKNOWN',
+    temp: { celsius: parseInt(raw.match(/\d{2}\/(\d{2})/)?.[1] || '15') },
+    wind: {
+      degrees: parseInt(raw.match(/(\d{3})KT/)?.[1] || '0'),
+      speed_kts: parseInt(raw.match(/(\d{2})KT/)?.[0] || '0')
+    }
+  };
+};
+
 /**
  * Fetch METAR data for a specific airport
  * @param {string} icao - Airport ICAO code (e.g., KJFK)
  * @returns {Promise} - Promise resolving to METAR data
  */
 export const fetchMetar = async (icao) => {
-  if (!icao) {
-    console.error('No ICAO code provided');
-    return getMockMetar('KJFK');
-  }
-  
-  // Normalize ICAO code
-  const normalizedIcao = icao.toUpperCase().trim();
-  
-  // If mock data is enabled, return mock data immediately
-  if (useMockData) {
-    console.log(`Using mock METAR data for ${normalizedIcao} (mock mode enabled)`);
-    return getMockMetar(normalizedIcao);
-  }
-  
-  // Check cache first
-  const cacheKey = `metar_${normalizedIcao}`;
-  const cachedData = cache.get(cacheKey);
-  if (cachedData) {
-    console.log(`Using cached METAR data for ${normalizedIcao}`);
-    return cachedData;
-  }
-  
-  // Check rate limiting
-  if (!rateLimits.canMakeCall('metar')) {
-    console.warn(`Rate limit reached for METAR API, using mock data for ${normalizedIcao}`);
-    return getMockMetar(normalizedIcao);
-  }
-  
+  const icaoUpper = icao.toUpperCase();
+  console.log('[DEBUG] Starting METAR fetch for', icaoUpper);
+
   try {
-    console.log(`Fetching METAR data for ${normalizedIcao}`);
-    const response = await fetch(`${BASE_URL}/metar/${normalizedIcao}`, {
-      method: 'GET',
-      headers: {
-        'X-RapidAPI-Key': API_KEY,
-        'X-RapidAPI-Host': API_HOST
-      }
-    });
+    const raw = await fetchAviationWeather(icaoUpper, 'metar');
+    console.log('[DEBUG] Raw API Response:', raw);
     
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+    const parsed = parseRawMetar(raw);
+    console.log('[DEBUG] Parsed Data:', parsed);
+
+    if (!parsed.raw || parsed.raw.includes('NO DATA')) {
+      throw new Error('Invalid parsed data');
     }
-    
-    const data = await response.json();
-    
-    // If no data is returned, fall back to mock data
-    if (!data || !data.data || data.data.length === 0) {
-      console.warn(`No METAR data found for ${normalizedIcao}, using mock data`);
-      return getMockMetar(normalizedIcao);
-    }
-    
-    // Cache the successful response
-    cache.set(cacheKey, data);
-    return data;
+
+    return { 
+      data: [{
+        ...parsed,
+        station: { 
+          icao: icaoUpper,
+          name: `${icaoUpper} Airport`
+        }
+      }]
+    };
   } catch (error) {
-    console.error(`Error fetching METAR for ${normalizedIcao}:`, error);
-    console.log('Falling back to mock data');
-    return getMockMetar(normalizedIcao);
+    console.error('[ERROR] METAR Failure:', error.message);
+    console.log('[DEBUG] Falling back to mock data');
+    return getMockMetar(icaoUpper);
   }
+};
+
+const getMockMetar = (icao) => {
+  console.log('[MOCK] Generating mock data for', icao);
+  return {
+    data: [{
+      raw: 'METAR MOCK 000000Z 00000KT',
+      station: { icao, name: `${icao} (Mock)` }
+    }]
+  };
 };
 
 /**
@@ -165,63 +263,26 @@ export const fetchMetar = async (icao) => {
  * @returns {Promise} - Promise resolving to TAF data
  */
 export const fetchTaf = async (icao) => {
+  debugLog(`Starting TAF fetch for ${icao}`);
+  
   if (!icao) {
     console.error('No ICAO code provided');
     return getMockTaf('KJFK');
   }
   
-  // Normalize ICAO code
-  const normalizedIcao = icao.toUpperCase().trim();
+  icao = icao.toUpperCase().trim();
   
-  // If mock data is enabled, return mock data immediately
   if (useMockData) {
-    console.log(`Using mock TAF data for ${normalizedIcao} (mock mode enabled)`);
-    return getMockTaf(normalizedIcao);
-  }
-  
-  // Check cache first
-  const cacheKey = `taf_${normalizedIcao}`;
-  const cachedData = cache.get(cacheKey);
-  if (cachedData) {
-    console.log(`Using cached TAF data for ${normalizedIcao}`);
-    return cachedData;
-  }
-  
-  // Check rate limiting
-  if (!rateLimits.canMakeCall('taf')) {
-    console.warn(`Rate limit reached for TAF API, using mock data for ${normalizedIcao}`);
-    return getMockTaf(normalizedIcao);
+    debugLog('Using mock data');
+    return getMockTaf(icao);
   }
   
   try {
-    console.log(`Fetching TAF data for ${normalizedIcao}`);
-    const response = await fetch(`${BASE_URL}/taf/${normalizedIcao}`, {
-      method: 'GET',
-      headers: {
-        'X-RapidAPI-Key': API_KEY,
-        'X-RapidAPI-Host': API_HOST
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    // If no data is returned, fall back to mock data
-    if (!data || !data.data || data.data.length === 0) {
-      console.warn(`No TAF data found for ${normalizedIcao}, using mock data`);
-      return getMockTaf(normalizedIcao);
-    }
-    
-    // Cache the successful response
-    cache.set(cacheKey, data);
-    return data;
+    const raw = await fetchAviationWeather(icao, 'taf');
+    return { data: [{ raw, station: { icao } }] };
   } catch (error) {
-    console.error(`Error fetching TAF for ${normalizedIcao}:`, error);
-    console.log('Falling back to mock data');
-    return getMockTaf(normalizedIcao);
+    debugLog('All TAF sources failed:', error);
+    return getMockTaf(icao);
   }
 };
 
@@ -412,76 +473,6 @@ const getMockAirportName = (icao) => {
   };
   
   return airports[icao] || `${icao} Airport`;
-};
-
-const getMockMetar = (icao) => {
-  const now = new Date();
-  const hour = now.getUTCHours().toString().padStart(2, '0');
-  const minute = now.getUTCMinutes().toString().padStart(2, '0');
-  const day = now.getUTCDate().toString().padStart(2, '0');
-  
-  // Generate random weather conditions
-  const windDir = Math.floor(Math.random() * 36) * 10;
-  const windSpeed = Math.floor(Math.random() * 25) + 5;
-  const gustChance = Math.random();
-  const gustSpeed = windSpeed + Math.floor(Math.random() * 15) + 5;
-  const windGust = gustChance > 0.7 ? `G${gustSpeed}` : '';
-  const visibility = Math.floor(Math.random() * 7) + 3;
-  const temp = Math.floor(Math.random() * 30) - 5;
-  const dewpoint = temp - Math.floor(Math.random() * 10);
-  const altimeter = (29.92 + (Math.random() * 0.5 - 0.25)).toFixed(2);
-  
-  // Determine flight category based on visibility and ceiling
-  let flightCategory = 'VFR';
-  if (visibility < 5) flightCategory = 'MVFR';
-  if (visibility < 3) flightCategory = 'IFR';
-  if (visibility < 1) flightCategory = 'LIFR';
-  
-  const rawText = `${icao} ${day}${hour}${minute}Z ${windDir.toString().padStart(3, '0')}${windSpeed.toString().padStart(2, '0')}${windGust}KT ${visibility}SM FEW050 ${temp.toString().padStart(2, '0')}/${dewpoint.toString().padStart(2, '0')} A${altimeter.replace('.', '')}`;
-  
-  return {
-    data: [
-      {
-        icao,
-        raw_text: rawText,
-        barometer: {
-          hg: parseFloat(altimeter),
-          hpa: parseFloat(altimeter) * 33.8639
-        },
-        clouds: [
-          {
-            code: 'FEW',
-            base_feet_agl: 5000,
-            text: 'Few clouds at 5,000 feet'
-          }
-        ],
-        flight_category: flightCategory,
-        humidity_percent: 65,
-        temperature: {
-          celsius: temp,
-          fahrenheit: (temp * 9/5) + 32
-        },
-        dewpoint: {
-          celsius: dewpoint,
-          fahrenheit: (dewpoint * 9/5) + 32
-        },
-        visibility: {
-          miles: visibility,
-          meters: visibility * 1609.34
-        },
-        wind: {
-          degrees: windDir,
-          speed_kts: windSpeed,
-          speed_mph: Math.round(windSpeed * 1.15078),
-          gust_kts: gustChance > 0.7 ? gustSpeed : null
-        },
-        station: {
-          name: getMockAirportName(icao)
-        },
-        observed: now.toISOString()
-      }
-    ]
-  };
 };
 
 const getMockTaf = (icao) => {
