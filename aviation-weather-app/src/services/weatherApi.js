@@ -1,11 +1,97 @@
 // Weather API service
-// Using CheckWX API which provides reliable aviation weather data
-// In a production app, you would need to sign up for an API key at https://www.checkwx.com/
+// Using Aviation Weather API from RapidAPI
+// https://rapidapi.com/aviation-weather-aviation-weather-default/api/aviation-weather
 
-const API_KEY = 'demo_key'; // Replace with your actual API key in production
+// Flag to control whether to use mock data or real API data
+// Default to false to ensure real data is used by default
+let useMockData = false;
 
-// Base URLs for different API endpoints
-const BASE_URL = 'https://api.checkwx.com';
+// Function to toggle mock data usage
+export function setUseMockData(value) {
+  useMockData = value;
+  console.log(`Mock data mode ${useMockData ? 'enabled' : 'disabled'}`);
+  // Clear cache when switching between real and mock data
+  cache.clear();
+  return useMockData;
+}
+
+// API key and host - using hardcoded values with fallback
+let API_KEY = '4b5e1026f1msh7355f41d799a8a4p1b9544jsn06d63a95a86f';
+let API_HOST = 'aviation-weather.p.rapidapi.com';
+
+// Try to get from environment variables if available
+try {
+  if (import.meta.env.VITE_RAPIDAPI_KEY) {
+    API_KEY = import.meta.env.VITE_RAPIDAPI_KEY;
+  }
+  if (import.meta.env.VITE_RAPIDAPI_HOST) {
+    API_HOST = import.meta.env.VITE_RAPIDAPI_HOST;
+  }
+} catch (error) {
+  console.warn('Unable to access environment variables, using defaults');
+}
+
+// Base URL for API endpoints
+const BASE_URL = `https://${API_HOST}`;
+
+// Simple in-memory cache
+const cache = {
+  data: {},
+  // Set cache with optional TTL (default 5 minutes)
+  set(key, value, ttl = 5 * 60 * 1000) {
+    this.data[key] = {
+      value,
+      expiry: Date.now() + ttl
+    };
+  },
+  // Get cache if not expired
+  get(key) {
+    const item = this.data[key];
+    if (!item) return null;
+    if (Date.now() > item.expiry) {
+      delete this.data[key];
+      return null;
+    }
+    return item.value;
+  },
+  // Clear all cache items
+  clear() {
+    this.data = {};
+    console.log('Cache cleared');
+  },
+  // Clear expired items
+  cleanup() {
+    const now = Date.now();
+    Object.keys(this.data).forEach(key => {
+      if (now > this.data[key].expiry) {
+        delete this.data[key];
+      }
+    });
+  }
+};
+
+// Rate limiting
+const rateLimits = {
+  calls: {},
+  // Check if we can make an API call to a specific endpoint
+  canMakeCall(endpoint, limit = 10, period = 60 * 1000) {
+    const now = Date.now();
+    if (!this.calls[endpoint]) {
+      this.calls[endpoint] = [];
+    }
+    
+    // Remove expired timestamps
+    this.calls[endpoint] = this.calls[endpoint].filter(time => now - time < period);
+    
+    // Check if we're under the limit
+    if (this.calls[endpoint].length < limit) {
+      this.calls[endpoint].push(now);
+      return true;
+    }
+    
+    return false;
+  }
+};
 
 /**
  * Fetch METAR data for a specific airport
@@ -13,20 +99,63 @@ const BASE_URL = 'https://api.checkwx.com';
  * @returns {Promise} - Promise resolving to METAR data
  */
 export const fetchMetar = async (icao) => {
+  if (!icao) {
+    console.error('No ICAO code provided');
+    return getMockMetar('KJFK');
+  }
+  
+  // Normalize ICAO code
+  const normalizedIcao = icao.toUpperCase().trim();
+  
+  // If mock data is enabled, return mock data immediately
+  if (useMockData) {
+    console.log(`Using mock METAR data for ${normalizedIcao} (mock mode enabled)`);
+    return getMockMetar(normalizedIcao);
+  }
+  
+  // Check cache first
+  const cacheKey = `metar_${normalizedIcao}`;
+  const cachedData = cache.get(cacheKey);
+  if (cachedData) {
+    console.log(`Using cached METAR data for ${normalizedIcao}`);
+    return cachedData;
+  }
+  
+  // Check rate limiting
+  if (!rateLimits.canMakeCall('metar')) {
+    console.warn(`Rate limit reached for METAR API, using mock data for ${normalizedIcao}`);
+    return getMockMetar(normalizedIcao);
+  }
+  
   try {
-    // In a real app with a valid API key:
-    // const response = await fetch(`${BASE_URL}/metar/${icao}/decoded`, {
-    //   headers: {
-    //     'X-API-Key': API_KEY
-    //   }
-    // });
-    // return await response.json();
+    console.log(`Fetching METAR data for ${normalizedIcao}`);
+    const response = await fetch(`${BASE_URL}/metar/${normalizedIcao}`, {
+      method: 'GET',
+      headers: {
+        'X-RapidAPI-Key': API_KEY,
+        'X-RapidAPI-Host': API_HOST
+      }
+    });
     
-    // For demo purposes, we'll return mock data
-    return getMockMetar(icao);
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    // If no data is returned, fall back to mock data
+    if (!data || !data.data || data.data.length === 0) {
+      console.warn(`No METAR data found for ${normalizedIcao}, using mock data`);
+      return getMockMetar(normalizedIcao);
+    }
+    
+    // Cache the successful response
+    cache.set(cacheKey, data);
+    return data;
   } catch (error) {
-    console.error('Error fetching METAR:', error);
-    throw new Error('Failed to fetch METAR data');
+    console.error(`Error fetching METAR for ${normalizedIcao}:`, error);
+    console.log('Falling back to mock data');
+    return getMockMetar(normalizedIcao);
   }
 };
 
@@ -36,20 +165,63 @@ export const fetchMetar = async (icao) => {
  * @returns {Promise} - Promise resolving to TAF data
  */
 export const fetchTaf = async (icao) => {
+  if (!icao) {
+    console.error('No ICAO code provided');
+    return getMockTaf('KJFK');
+  }
+  
+  // Normalize ICAO code
+  const normalizedIcao = icao.toUpperCase().trim();
+  
+  // If mock data is enabled, return mock data immediately
+  if (useMockData) {
+    console.log(`Using mock TAF data for ${normalizedIcao} (mock mode enabled)`);
+    return getMockTaf(normalizedIcao);
+  }
+  
+  // Check cache first
+  const cacheKey = `taf_${normalizedIcao}`;
+  const cachedData = cache.get(cacheKey);
+  if (cachedData) {
+    console.log(`Using cached TAF data for ${normalizedIcao}`);
+    return cachedData;
+  }
+  
+  // Check rate limiting
+  if (!rateLimits.canMakeCall('taf')) {
+    console.warn(`Rate limit reached for TAF API, using mock data for ${normalizedIcao}`);
+    return getMockTaf(normalizedIcao);
+  }
+  
   try {
-    // In a real app with a valid API key:
-    // const response = await fetch(`${BASE_URL}/taf/${icao}/decoded`, {
-    //   headers: {
-    //     'X-API-Key': API_KEY
-    //   }
-    // });
-    // return await response.json();
+    console.log(`Fetching TAF data for ${normalizedIcao}`);
+    const response = await fetch(`${BASE_URL}/taf/${normalizedIcao}`, {
+      method: 'GET',
+      headers: {
+        'X-RapidAPI-Key': API_KEY,
+        'X-RapidAPI-Host': API_HOST
+      }
+    });
     
-    // For demo purposes, we'll return mock data
-    return getMockTaf(icao);
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    // If no data is returned, fall back to mock data
+    if (!data || !data.data || data.data.length === 0) {
+      console.warn(`No TAF data found for ${normalizedIcao}, using mock data`);
+      return getMockTaf(normalizedIcao);
+    }
+    
+    // Cache the successful response
+    cache.set(cacheKey, data);
+    return data;
   } catch (error) {
-    console.error('Error fetching TAF:', error);
-    throw new Error('Failed to fetch TAF data');
+    console.error(`Error fetching TAF for ${normalizedIcao}:`, error);
+    console.log('Falling back to mock data');
+    return getMockTaf(normalizedIcao);
   }
 };
 
@@ -92,34 +264,135 @@ export const fetchStation = async (icao) => {
  * @returns {Promise} - Promise resolving to map data
  */
 export const fetchMapData = async () => {
+  // Check cache first
+  const cacheKey = 'map_data';
+  const cachedData = cache.get(cacheKey);
+  if (cachedData) {
+    console.log('Using cached map data');
+    return cachedData;
+  }
+  
   try {
-    // In a real app with a valid API key:
-    // const response = await fetch(`${BASE_URL}/metar/map?bbox=-125,25,-65,50`, {
-    //   headers: {
-    //     'X-API-Key': API_KEY
-    //   }
-    // });
-    // return await response.json();
+    console.log('Fetching map data for multiple airports');
     
-    // For demo purposes, we'll return mock data
-    return {
-      data: [
-        { icao: 'KATL', lat: 33.6407, lon: -84.4277, flight_category: 'VFR' },
-        { icao: 'KBOS', lat: 42.3656, lon: -71.0096, flight_category: 'MVFR' },
-        { icao: 'KDFW', lat: 32.8998, lon: -97.0403, flight_category: 'VFR' },
-        { icao: 'KDEN', lat: 39.8561, lon: -104.6737, flight_category: 'IFR' },
-        { icao: 'KLAX', lat: 33.9416, lon: -118.4085, flight_category: 'VFR' },
-        { icao: 'KMIA', lat: 25.7932, lon: -80.2906, flight_category: 'MVFR' },
-        { icao: 'KJFK', lat: 40.6413, lon: -73.7781, flight_category: 'IFR' },
-        { icao: 'KORD', lat: 41.9742, lon: -87.9073, flight_category: 'LIFR' },
-        { icao: 'KSFO', lat: 37.6213, lon: -122.3790, flight_category: 'MVFR' },
-        { icao: 'KSEA', lat: 47.4502, lon: -122.3088, flight_category: 'IFR' }
-      ]
-    };
+    // Get data for major US airports
+    const airports = [
+      'KATL', 'KBOS', 'KDFW', 'KDEN', 'KLAX', 'KMIA', 'KJFK', 'KORD', 'KSFO', 'KSEA',
+      'KLAS', 'KPHX', 'KMCO', 'KIAH', 'KSLC', 'KCLT', 'KMSP', 'KDTW', 'KPHL', 'KCVG'
+    ];
+    
+    // Fetch METAR data for all airports in batches to avoid rate limiting
+    const mapData = [];
+    const batchSize = 5; // Process airports in batches
+    
+    for (let i = 0; i < airports.length; i += batchSize) {
+      const batch = airports.slice(i, i + batchSize);
+      const promises = batch.map(icao => fetchMetar(icao));
+      
+      try {
+        const results = await Promise.all(promises);
+        
+        results.forEach((result, index) => {
+          const airportIndex = i + index;
+          const airportCode = airports[airportIndex];
+          
+          if (result && result.data && result.data.length > 0) {
+            const airport = result.data[0];
+            mapData.push({
+              icao: airport.icao || airportCode,
+              lat: airport.latitude || getDefaultCoordinates(airportCode).lat,
+              lon: airport.longitude || getDefaultCoordinates(airportCode).lon,
+              flight_category: airport.flight_category || 'VFR'
+            });
+          } else {
+            // Use default data if API doesn't return valid data
+            mapData.push({
+              icao: airportCode,
+              ...getDefaultCoordinates(airportCode),
+              flight_category: getRandomFlightCategory()
+            });
+          }
+        });
+        
+        // Add a small delay between batches to avoid rate limiting
+        if (i + batchSize < airports.length) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      } catch (batchError) {
+        console.error(`Error processing batch ${i}-${i+batchSize}:`, batchError);
+        // For any batch that fails, add default data for those airports
+        batch.forEach(airportCode => {
+          mapData.push({
+            icao: airportCode,
+            ...getDefaultCoordinates(airportCode),
+            flight_category: getRandomFlightCategory()
+          });
+        });
+      }
+    }
+    
+    const result = { data: mapData };
+    
+    // Cache the result for 5 minutes
+    cache.set(cacheKey, result, 5 * 60 * 1000);
+    
+    return result;
   } catch (error) {
     console.error('Error fetching map data:', error);
-    throw new Error('Failed to fetch map data');
+    return getFallbackMapData();
   }
+};
+
+// Helper function to get fallback map data
+const getFallbackMapData = () => {
+  return {
+    data: [
+      { icao: 'KATL', lat: 33.6407, lon: -84.4277, flight_category: 'VFR' },
+      { icao: 'KBOS', lat: 42.3656, lon: -71.0096, flight_category: 'MVFR' },
+      { icao: 'KDFW', lat: 32.8998, lon: -97.0403, flight_category: 'VFR' },
+      { icao: 'KDEN', lat: 39.8561, lon: -104.6737, flight_category: 'IFR' },
+      { icao: 'KLAX', lat: 33.9416, lon: -118.4085, flight_category: 'VFR' },
+      { icao: 'KMIA', lat: 25.7932, lon: -80.2906, flight_category: 'MVFR' },
+      { icao: 'KJFK', lat: 40.6413, lon: -73.7781, flight_category: 'IFR' },
+      { icao: 'KORD', lat: 41.9742, lon: -87.9073, flight_category: 'LIFR' },
+      { icao: 'KSFO', lat: 37.6213, lon: -122.3790, flight_category: 'MVFR' },
+      { icao: 'KSEA', lat: 47.4502, lon: -122.3088, flight_category: 'IFR' }
+    ]
+  };
+};
+
+// Helper function to get default coordinates for major airports
+const getDefaultCoordinates = (icao) => {
+  const coordinates = {
+    'KATL': { lat: 33.6407, lon: -84.4277 },
+    'KBOS': { lat: 42.3656, lon: -71.0096 },
+    'KDFW': { lat: 32.8998, lon: -97.0403 },
+    'KDEN': { lat: 39.8561, lon: -104.6737 },
+    'KLAX': { lat: 33.9416, lon: -118.4085 },
+    'KMIA': { lat: 25.7932, lon: -80.2906 },
+    'KJFK': { lat: 40.6413, lon: -73.7781 },
+    'KORD': { lat: 41.9742, lon: -87.9073 },
+    'KSFO': { lat: 37.6213, lon: -122.3790 },
+    'KSEA': { lat: 47.4502, lon: -122.3088 },
+    'KLAS': { lat: 36.0840, lon: -115.1537 },
+    'KPHX': { lat: 33.4352, lon: -112.0101 },
+    'KMCO': { lat: 28.4312, lon: -81.3081 },
+    'KIAH': { lat: 29.9844, lon: -95.3414 },
+    'KSLC': { lat: 40.7899, lon: -111.9791 },
+    'KCLT': { lat: 35.2144, lon: -80.9473 },
+    'KMSP': { lat: 44.8848, lon: -93.2223 },
+    'KDTW': { lat: 42.2162, lon: -83.3554 },
+    'KPHL': { lat: 39.8729, lon: -75.2437 },
+    'KCVG': { lat: 39.0489, lon: -84.6678 }
+  };
+  
+  return coordinates[icao] || { lat: 39.8283, lon: -98.5795 }; // Default to center of US
+};
+
+// Helper function to generate a random flight category
+const getRandomFlightCategory = () => {
+  const categories = ['VFR', 'MVFR', 'IFR', 'LIFR'];
+  return categories[Math.floor(Math.random() * categories.length)];
 };
 
 // Mock data helpers

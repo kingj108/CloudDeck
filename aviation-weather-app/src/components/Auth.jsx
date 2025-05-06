@@ -64,9 +64,20 @@ export default function Auth({ onLogin, onLogout, isLoggedIn, currentUser }) {
 
   return (
     <div className="bg-white rounded shadow">
+      <div className="mb-6 flex justify-center pt-4">
+        <div className="mb-8 text-center">
+          <div className="flex flex-col items-center justify-center">
+            <h1 className="text-3xl font-light tracking-tight">
+              <span className="font-bold">Cloud</span>
+              <span className="font-extralight">Deck</span>
+            </h1>
+            <p className="text-gray-500 text-sm mt-1">Aviation Weather Platform</p>
+          </div>
+        </div>
+      </div>
       {!showLoginForm ? (
         <div className="p-4">
-          <h2 className="text-lg font-semibold mb-2">Account</h2>
+          <h2 className="text-xl font-semibold mb-4 text-center">Account</h2>
           <p className="text-sm text-gray-600 mb-4">
             Log in or create an account to save your favorite airports across devices.
           </p>

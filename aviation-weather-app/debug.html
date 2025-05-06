@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Debug Page</title>
+  <script>
+    // Log to console when page loads
+    window.addEventListener('DOMContentLoaded', () => {
+      console.log('Debug page loaded successfully');
+      
+      // Add visible content to the page
+      const debugInfo = document.createElement('div');
+      debugInfo.innerHTML = `
+        <h1>Debug Information</h1>
+        <p>Page loaded at: ${new Date().toLocaleString()}</p>
+        <p>User Agent: ${navigator.userAgent}</p>
+        <p>Window size: ${window.innerWidth}x${window.innerHeight}</p>
+      `;
+      document.body.appendChild(debugInfo);
+    });
+  </script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f0f0f0;
+    }
+    h1 { color: #0c3b6b; }
+  </style>
+</head>
+<body>
+  <h1>CloudDeck Debug Page</h1>
+  <p>If you can see this text, HTML rendering is working correctly.</p>
+  <p>Check the browser console for JavaScript logs.</p>
+</body>
+</html>

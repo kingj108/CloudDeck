@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400">
+  <rect width="1200" height="400" fill="#002855" />
+  <path d="M350 100 C300 100, 275 125, 275 175 C275 200, 290 225, 325 225 L275 300 L325 275 L350 350 L375 275 L425 300 L375 225 C410 225, 425 200, 425 175 C425 125, 400 100, 350 100 Z" fill="white" />
+  <text x="500" y="250" font-family="Arial" font-size="100" fill="white">CloudDeck</text>
+</svg>
