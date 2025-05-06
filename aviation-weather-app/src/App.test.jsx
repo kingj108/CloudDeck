@@ -1,3 +1,4 @@
+//Tests whether the React app is working correctly by rendering a simple component and checking if it appears in the document.
 import React from 'react';
 
 function TestApp() {
