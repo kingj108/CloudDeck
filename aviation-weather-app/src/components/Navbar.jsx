@@ -7,62 +7,45 @@ export default function Navbar({
   setActiveTab,
   onOpenSettings,
   isLoggedIn,
-  currentUser,
-  useMockData,
-  setUseMockData
+  currentUser
 }) {
-  
-  const navButtonStyle = {
-    backgroundColor: '#002366', // Dark navy blue
-    color: 'white',
-    border: '1px solid white',
-    padding: '8px 20px',
-    borderRadius: '4px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-    '&:hover': {
-      backgroundColor: '#003399', // Slightly lighter blue on hover
-    }
-  };
-
   return (
-    <nav className="navbar py-2 px-4">
+    <nav className="bg-blue-900 py-2 px-4">
       <div className="container mx-auto max-w-4xl flex flex-wrap items-center justify-between">
         <div className="flex items-center">
           <div className="flex items-center mr-6">
             <h1 className="text-xl font-light tracking-tight">
-              <span className="font-bold text-blue-500">Cloud</span>
+              <span className="font-bold text-blue-300">Cloud</span>
               <span className="font-extralight text-white">Deck</span>
             </h1>
           </div>
           <div className="flex space-x-1 ml-2">
             <button
-              style={{
-                ...navButtonStyle,
-                backgroundColor: activeTab === 'weather' ? 'white' : '#002366',
-                color: activeTab === 'weather' ? '#002366' : 'white'
-              }}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'weather' 
+                  ? 'bg-white text-blue-900' 
+                  : 'text-white hover:bg-blue-800'
+              }`}
               onClick={() => setActiveTab('weather')}
             >
               Weather
             </button>
             <button
-              style={{
-                ...navButtonStyle,
-                backgroundColor: activeTab === 'map' ? 'white' : '#002366',
-                color: activeTab === 'map' ? '#002366' : 'white'
-              }}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'map' 
+                  ? 'bg-white text-blue-900' 
+                  : 'text-white hover:bg-blue-800'
+              }`}
               onClick={() => setActiveTab('map')}
             >
               Weather Map
             </button>
             <button
-              style={{
-                ...navButtonStyle,
-                backgroundColor: activeTab === 'account' ? 'white' : '#002366',
-                color: activeTab === 'account' ? '#002366' : 'white'
-              }}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'account' 
+                  ? 'bg-white text-blue-900' 
+                  : 'text-white hover:bg-blue-800'
+              }`}
               onClick={() => setActiveTab('account')}
             >
               {isLoggedIn ? 'My Account' : 'Login'}
@@ -70,32 +53,19 @@ export default function Navbar({
           </div>
         </div>
         
-        <div className="flex items-center">
+        <div className="flex items-center space-x-4">
           <SearchForm onSearch={onSearch} />
-          
-          <div className="ml-4">
-            <label className="inline-flex items-center cursor-pointer">
-              <input 
-                type="checkbox" 
-                className="sr-only peer"
-                checked={useMockData}
-                onChange={() => setUseMockData(!useMockData)}
-              />
-              <div className="relative w-11 h-6 bg-gray-600 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
-              <span className="ml-2 text-sm font-medium text-white">Demo Data</span>
-            </label>
-          </div>
           
           {/* Settings button */}
           <button 
-            style={navButtonStyle}
+            className="px-4 py-2 bg-blue-800 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
             onClick={onOpenSettings}
           >
             Settings
           </button>
           
           {isLoggedIn && (
-            <div className="ml-3 text-white text-sm">
+            <div className="text-white text-sm">
               <span className="bg-green-500 rounded-full w-2 h-2 inline-block mr-1"></span>
               {currentUser.name}
             </div>

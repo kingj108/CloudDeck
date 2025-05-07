@@ -4,11 +4,9 @@ import WeatherDisplay from './components/WeatherDisplay';
 import WeatherMap from './components/WeatherMap';
 import LoadingIndicator from './components/LoadingIndicator';
 import ErrorMessage from './components/ErrorMessage';
-import { fetchMetar, fetchTaf, setUseMockData as setApiMockData } from './services/weatherApi';
+import { fetchMetar, fetchTaf } from './services/weatherApi';
 
 function App() {
-  console.log('App component rendering');
-  
   // Weather data state
   const [metar, setMetar] = useState(null);
   const [taf, setTaf] = useState(null);
@@ -18,21 +16,7 @@ function App() {
   // UI state
   const [activeTab, setActiveTab] = useState('weather');
   const [favorites, setFavorites] = useState([]);
-  const [useMockData, setUseMockData] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
-  // Initialize API to use real data
-  useEffect(() => {
-    setApiMockData(false);
-  }, []);
-
-  // Handle mock data toggle
-  const handleToggleMockData = (value) => {
-    setUseMockData(value);
-    // Clear any cached data when toggling
-    setMetar(null);
-    setTaf(null);
-  };
   
   // Search handler
   const handleSearch = async (icao) => {
@@ -51,18 +35,16 @@ function App() {
       ]);
       
       if (!metarData?.data?.[0]?.raw) {
-        throw new Error('Received empty weather data - using mock data instead');
+        throw new Error('No weather data available for this airport');
       }
       
       setMetar(metarData);
       setTaf(tafData);
     } catch (err) {
       console.error('Search error:', err);
-      setError(err.message);
-      
-      // Always show mock data when real data fails
-      setMetar(getMockMetar(icao));
-      setTaf(getMockTaf(icao));
+      setError(err.message || 'Failed to fetch weather data');
+      setMetar(null);
+      setTaf(null);
     } finally {
       setLoading(false);
     }
@@ -122,61 +104,25 @@ function App() {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 w-full max-w-lg">
           <button 
-            style={{
-              backgroundColor: '#002366',
-              color: 'white',
-              border: '1px solid white',
-              padding: '12px 24px',
-              borderRadius: '6px',
-              fontSize: '1rem',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-            }}
+            className="bg-blue-900 text-white border border-white px-6 py-3 rounded-md text-base font-medium hover:bg-blue-800 transition-colors"
             onClick={() => handleSearch('KJFK')} 
           >
             <span className="mr-2">✈️</span> New York (KJFK)
           </button>
           <button 
-            style={{
-              backgroundColor: '#002366',
-              color: 'white',
-              border: '1px solid white',
-              padding: '12px 24px',
-              borderRadius: '6px',
-              fontSize: '1rem',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-            }}
+            className="bg-blue-900 text-white border border-white px-6 py-3 rounded-md text-base font-medium hover:bg-blue-800 transition-colors"
             onClick={() => handleSearch('KLAX')} 
           >
             <span className="mr-2">✈️</span> Los Angeles (KLAX)
           </button>
           <button 
-            style={{
-              backgroundColor: '#002366',
-              color: 'white',
-              border: '1px solid white',
-              padding: '12px 24px',
-              borderRadius: '6px',
-              fontSize: '1rem',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-            }}
+            className="bg-blue-900 text-white border border-white px-6 py-3 rounded-md text-base font-medium hover:bg-blue-800 transition-colors"
             onClick={() => handleSearch('KORD')} 
           >
             <span className="mr-2">✈️</span> Chicago (KORD)
           </button>
           <button 
-            style={{
-              backgroundColor: '#002366',
-              color: 'white',
-              border: '1px solid white',
-              padding: '12px 24px',
-              borderRadius: '6px',
-              fontSize: '1rem',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-            }}
+            className="bg-blue-900 text-white border border-white px-6 py-3 rounded-md text-base font-medium hover:bg-blue-800 transition-colors"
             onClick={() => handleSearch('KATL')} 
           >
             <span className="mr-2">✈️</span> Atlanta (KATL)
@@ -195,8 +141,6 @@ function App() {
         onOpenSettings={() => console.log('Settings clicked')}
         isLoggedIn={false}
         currentUser={null}
-        useMockData={useMockData}
-        setUseMockData={handleToggleMockData}
       />
       <main className="container mx-auto max-w-4xl p-4">
         {mainContent}
