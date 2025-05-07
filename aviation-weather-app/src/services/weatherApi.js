@@ -4,8 +4,8 @@
 const DEBUG_MODE = true;
 const API_CONFIG = {
   endpoints: {
-    METAR: 'https://api.weather.gov/stations',
-    TAF: 'https://api.weather.gov/stations'
+    METAR: '/api/checkwx/metar',
+    TAF: '/api/checkwx/taf'
   },
   retries: 3,
   retryDelay: 1000,
@@ -48,8 +48,7 @@ const fetchWithRetry = async (url, options = {}, retries = API_CONFIG.retries) =
       ...options,
       signal: controller.signal,
       headers: {
-        'Accept': 'application/geo+json',
-        'User-Agent': '(CloudDeck Weather App, contact@clouddeck.app)',
+        'Accept': 'application/json',
         ...options.headers
       }
     });
@@ -89,55 +88,194 @@ export const fetchMetar = async (icao) => {
   }
 
   try {
-    // First, get the station information
-    const stationUrl = `${API_CONFIG.endpoints.METAR}/${icaoUpper}`;
-    debugLog('Fetching station info from:', stationUrl);
+    const url = `${API_CONFIG.endpoints.METAR}/${icaoUpper}`;
+    debugLog('Fetching METAR from:', url);
     
-    const stationResponse = await fetchWithRetry(stationUrl);
-    const stationData = await stationResponse.json();
-    debugLog('Station data:', stationData);
+    const response = await fetchWithRetry(url);
+    const data = await response.json();
+    debugLog('METAR response:', data);
 
-    // Then, get the latest observations
-    const observationsUrl = `${stationUrl}/observations/latest`;
-    debugLog('Fetching observations from:', observationsUrl);
+    if (!data || !data.data || !data.data[0]) {
+      throw new Error('No METAR data available');
+    }
+
+    const metarData = data.data[0];
+    debugLog('Parsed METAR data:', metarData);
     
-    const obsResponse = await fetchWithRetry(observationsUrl);
-    const obsData = await obsResponse.json();
-    debugLog('Observation data:', obsData);
-
+    // Parse the raw METAR if needed
+    const rawMetar = typeof metarData === 'string' ? metarData : metarData.raw;
+    const parsedData = parseRawMetar(rawMetar);
+    
     const result = {
       data: [{
-        raw: obsData.raw || 'No raw METAR available',
+        raw: rawMetar,
         station: {
           icao: icaoUpper,
-          name: stationData.properties.name
+          name: metarData.station?.name || icaoUpper
         },
-        flight_category: obsData.properties?.flightCategory || 'UNKNOWN',
+        flight_category: parsedData.category || metarData.flight_category || determineFlightCategory(parsedData.visibility),
         temp: {
-          celsius: obsData.properties?.temperature?.value
+          celsius: parsedData.temp || metarData.temperature?.celsius || metarData.temp?.celsius || metarData.temp_c
         },
         wind: {
-          degrees: obsData.properties?.windDirection?.value,
-          speed_kts: Math.round(obsData.properties?.windSpeed?.value * 1.944), // Convert m/s to knots
-          gust_kts: obsData.properties?.windGust?.value ? Math.round(obsData.properties.windGust.value * 1.944) : null
+          degrees: parsedData.windDir || metarData.wind?.degrees || metarData.wind_direction?.value,
+          speed_kts: parsedData.windSpeed || metarData.wind?.speed_kts || metarData.wind?.speed?.knots,
+          gust_kts: parsedData.windGust || metarData.wind?.gust_kts || metarData.wind?.gust?.knots
         },
         visibility: {
-          miles: obsData.properties?.visibility?.value * 0.000621371 // Convert meters to miles
+          miles: parsedData.visibility || metarData.visibility?.miles || metarData.visibility?.miles_float
         },
-        timestamp: obsData.properties?.timestamp
+        altimeter: {
+          inHg: parsedData.altimeter || metarData.barometer?.inHg || metarData.altim_in_hg
+        },
+        timestamp: metarData.observed || metarData.time?.dt || parsedData.time
       }]
     };
 
     // Cache the result for 5 minutes
     cache.set(cacheKey, result);
+    debugLog('Returning formatted result:', result);
     
     return result;
   } catch (error) {
     debugLog('METAR fetch error:', error);
-    // If the API fails, return mock data
-    return getMockMetar(icaoUpper);
+    // Try alternative API: AVWX API
+    try {
+      const avwxUrl = `https://avwx.rest/api/metar/${icaoUpper}`;
+      const response = await fetch(avwxUrl, {
+        headers: {
+          'Authorization': 'AVWX_API_KEY_HERE'
+        }
+      });
+      const data = await response.json();
+      
+      if (!response.ok) throw new Error('AVWX API error');
+      
+      return {
+        data: [{
+          raw: data.raw,
+          station: {
+            icao: icaoUpper,
+            name: data.station || icaoUpper
+          },
+          flight_category: data.flight_rules || 'UNKNOWN',
+          temp: {
+            celsius: data.temperature?.value
+          },
+          wind: {
+            degrees: data.wind_direction?.value,
+            speed_kts: data.wind_speed?.value,
+            gust_kts: data.wind_gust?.value
+          },
+          visibility: {
+            miles: data.visibility?.value
+          },
+          timestamp: data.time?.dt
+        }]
+      };
+    } catch (avwxError) {
+      debugLog('AVWX API error:', avwxError);
+      // If both APIs fail, try one more: FAA Weather API
+      try {
+        const faaUrl = `https://external-api.faa.gov/weather/metar/${icaoUpper}`;
+        const response = await fetch(faaUrl);
+        const data = await response.json();
+        
+        if (!response.ok) throw new Error('FAA API error');
+        
+        return {
+          data: [{
+            raw: data.metar,
+            station: {
+              icao: icaoUpper,
+              name: data.station_id || icaoUpper
+            },
+            flight_category: data.flight_category || 'UNKNOWN',
+            temp: {
+              celsius: data.temp_c
+            },
+            wind: {
+              degrees: data.wind_dir_degrees,
+              speed_kts: data.wind_speed_kt,
+              gust_kts: data.wind_gust_kt
+            },
+            visibility: {
+              miles: data.visibility_statute_mi
+            },
+            timestamp: data.observation_time
+          }]
+        };
+      } catch (faaError) {
+        debugLog('FAA API error:', faaError);
+        // If all APIs fail, return mock data
+        return getMockMetar(icaoUpper);
+      }
+    }
   }
 };
+
+// Helper function to parse raw METAR
+function parseRawMetar(raw) {
+  if (!raw) return {};
+  
+  const parts = raw.split(' ');
+  const result = {
+    time: null,
+    windDir: null,
+    windSpeed: null,
+    windGust: null,
+    visibility: null,
+    temp: null,
+    dewpoint: null,
+    altimeter: null
+  };
+
+  parts.forEach((part, index) => {
+    // Time
+    if (part.endsWith('Z')) {
+      result.time = part;
+    }
+    // Wind
+    else if (part.endsWith('KT')) {
+      const wind = part.slice(0, -2);
+      if (wind === 'VRB') {
+        result.windDir = 'VRB';
+        result.windSpeed = parseInt(wind.slice(3));
+      } else {
+        result.windDir = parseInt(wind.slice(0, 3));
+        result.windSpeed = parseInt(wind.slice(3));
+        if (wind.includes('G')) {
+          result.windGust = parseInt(wind.split('G')[1]);
+        }
+      }
+    }
+    // Visibility
+    else if (part.endsWith('SM')) {
+      result.visibility = parseFloat(part.slice(0, -2));
+    }
+    // Temperature/Dewpoint
+    else if (part.includes('/')) {
+      const [temp, dew] = part.split('/');
+      result.temp = parseInt(temp);
+      result.dewpoint = parseInt(dew);
+    }
+    // Altimeter
+    else if (part.startsWith('A')) {
+      result.altimeter = parseFloat(part.slice(1)) / 100;
+    }
+  });
+
+  return result;
+}
+
+// Helper function to determine flight category based on visibility
+function determineFlightCategory(visibility) {
+  if (!visibility) return 'UNKNOWN';
+  if (visibility >= 5) return 'VFR';
+  if (visibility >= 3) return 'MVFR';
+  if (visibility >= 1) return 'IFR';
+  return 'LIFR';
+}
 
 /**
  * Fetch TAF data for a specific airport
@@ -148,8 +286,79 @@ export const fetchTaf = async (icao) => {
   const icaoUpper = icao.toUpperCase();
   debugLog('Starting TAF fetch for', icaoUpper);
 
-  // For now, return mock TAF data since NOAA API doesn't provide TAF
-  return getMockTaf(icaoUpper);
+  // Check cache first
+  const cacheKey = `taf_${icaoUpper}`;
+  const cachedData = cache.get(cacheKey);
+  if (cachedData) {
+    debugLog('Using cached TAF data');
+    return cachedData;
+  }
+
+  try {
+    const url = `${API_CONFIG.endpoints.TAF}/${icaoUpper}`;
+    debugLog('Fetching TAF from:', url);
+    
+    const response = await fetchWithRetry(url);
+    const data = await response.json();
+    debugLog('TAF response:', data);
+
+    if (!data || !data.data || !data.data[0]) {
+      throw new Error('No TAF data available');
+    }
+
+    const tafData = data.data[0];
+    debugLog('Parsed TAF data:', tafData);
+    
+    const result = {
+      data: [{
+        raw: tafData.raw || tafData,
+        station: {
+          icao: icaoUpper,
+          name: tafData.station?.name || icaoUpper
+        },
+        forecast: tafData.forecast || [],
+        timestamp: {
+          issued: tafData.timestamp?.issued || tafData.time?.dt,
+          from: tafData.timestamp?.from,
+          to: tafData.timestamp?.to
+        }
+      }]
+    };
+
+    // Cache the result for 5 minutes
+    cache.set(cacheKey, result);
+    debugLog('Returning formatted TAF result:', result);
+    
+    return result;
+  } catch (error) {
+    debugLog('TAF fetch error:', error);
+    // Try alternative API: AVWX API
+    try {
+      const avwxUrl = `https://avwx.rest/api/taf/${icaoUpper}`;
+      const response = await fetch(avwxUrl, {
+        headers: {
+          'Authorization': 'AVWX_API_KEY_HERE'
+        }
+      });
+      const data = await response.json();
+      
+      if (!response.ok) throw new Error('AVWX API error');
+      
+      return {
+        data: [{
+          raw: data.raw,
+          station: {
+            icao: icaoUpper,
+            name: data.station || icaoUpper
+          },
+          timestamp: data.time?.dt
+        }]
+      };
+    } catch (avwxError) {
+      debugLog('AVWX API error:', avwxError);
+      return getMockTaf(icaoUpper);
+    }
+  }
 };
 
 // Export mock data functions for testing
