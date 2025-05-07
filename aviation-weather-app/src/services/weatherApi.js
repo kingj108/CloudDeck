@@ -128,7 +128,8 @@ export const fetchMetar = async (icao) => {
         altimeter: {
           inHg: parsedData.altimeter || metarData.barometer?.inHg || metarData.altim_in_hg
         },
-        timestamp: metarData.observed || metarData.time?.dt || parsedData.time
+        clouds: parsedData.clouds || metarData.clouds || [],
+        timestamp: metarData.observed || metarData.time?.dt || parsedData.time || new Date().toISOString()
       }]
     };
 
@@ -227,13 +228,36 @@ function parseRawMetar(raw) {
     visibility: null,
     temp: null,
     dewpoint: null,
-    altimeter: null
+    altimeter: null,
+    clouds: []
   };
 
+  const cloudTypes = ['CLR', 'SKC', 'FEW', 'SCT', 'BKN', 'OVC'];
+
   parts.forEach((part, index) => {
-    // Time
+    // Time (format: ddhhmmZ, e.g., 071853Z)
     if (part.endsWith('Z')) {
-      result.time = part;
+      const day = parseInt(part.slice(0, 2));
+      const hour = parseInt(part.slice(2, 4));
+      const minute = parseInt(part.slice(4, 6));
+      
+      // Create date object for the current month and year
+      const now = new Date();
+      const date = new Date(Date.UTC(
+        now.getFullYear(),
+        now.getMonth(),
+        day,
+        hour,
+        minute,
+        0  // seconds
+      ));
+      
+      // Handle month rollover (if the day is greater than today, it's from last month)
+      if (day > now.getDate()) {
+        date.setUTCMonth(date.getUTCMonth() - 1);
+      }
+      
+      result.time = date.toISOString();
     }
     // Wind
     else if (part.endsWith('KT')) {
@@ -262,6 +286,19 @@ function parseRawMetar(raw) {
     // Altimeter
     else if (part.startsWith('A')) {
       result.altimeter = parseFloat(part.slice(1)) / 100;
+    }
+    // Cloud layers
+    else if (cloudTypes.some(type => part.startsWith(type))) {
+      if (part === 'CLR' || part === 'SKC') {
+        result.clouds = [];  // Clear skies
+      } else {
+        const coverage = part.slice(0, 3);
+        const height = parseInt(part.slice(3)) * 100;
+        result.clouds.push({
+          coverage,
+          base_feet_agl: height
+        });
+      }
     }
   });
 

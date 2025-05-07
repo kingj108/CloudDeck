@@ -37,7 +37,16 @@ export default function WeatherDisplay({ metar, taf, favorites, onToggleFavorite
 
   // Format temperature
   const formatTemp = (temp) => {
-    return temp?.celsius !== undefined ? `${temp.celsius}°C` : 'N/A';
+    if (temp?.celsius === undefined) return 'N/A';
+    const fahrenheit = (temp.celsius * 9/5) + 32;
+    return `${temp.celsius}°C (${Math.round(fahrenheit)}°F)`;
+  };
+
+  // Format altimeter
+  const formatAltimeter = (altimInHg) => {
+    if (!altimInHg) return 'N/A';
+    const hpa = (altimInHg * 33.86389).toFixed(1);
+    return `${altimInHg} inHg (${hpa} hPa)`;
   };
 
   // Format visibility
@@ -128,6 +137,8 @@ export default function WeatherDisplay({ metar, taf, favorites, onToggleFavorite
                   <div><span className="font-semibold">Wind:</span> {parsedMetar.wind}</div>
                   <div><span className="font-semibold">Visibility:</span> {parsedMetar.visibility}</div>
                   <div><span className="font-semibold">Clouds:</span> {formatCloudLayers(metar.clouds)}</div>
+                  <div><span className="font-semibold">Temperature:</span> {formatTemp(metar.temp)}</div>
+                  <div><span className="font-semibold">Altimeter:</span> {formatAltimeter(parsedMetar.altimeter)}</div>
                   <div className="mt-1 text-sm">{parsedMetar.weather}</div>
                 </>
               ) : (
@@ -186,7 +197,7 @@ export default function WeatherDisplay({ metar, taf, favorites, onToggleFavorite
         <li>Visibility: {formatVisibility(metar.visibility)}</li>
         <li>Clouds: {formatCloudLayers(metar.clouds)}</li>
         <li>Temp / Dew: {formatTemp(metar.temp)} / {formatTemp(metar.dewpoint)}</li>
-        <li>Altimeter: {metar.altim_in_hg} inHg</li>
+        <li>Altimeter: {formatAltimeter(metar.altim_in_hg)}</li>
         <li className="flex items-center">
           <span>Category: </span>
           <div className="flex items-center ml-2">

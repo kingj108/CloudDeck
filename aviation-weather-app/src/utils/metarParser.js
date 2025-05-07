@@ -6,11 +6,18 @@ export const parseMetar = (raw) => {
   const parts = raw.split(' ');
   
   try {
+    // Find altimeter setting
+    const altimeterPart = parts.find(part => part.startsWith('A'));
+    const altimeter = altimeterPart ? 
+      (parseInt(altimeterPart.substring(1)) / 100).toFixed(2) : 
+      null;
+
     return {
       station: parts[0],
       time: parts[1],
       wind: parts[2],
       visibility: parts[3],
+      altimeter: altimeter,  // Add altimeter to the parsed data
       weather: parts.slice(4).join(' ')
     };
   } catch {
