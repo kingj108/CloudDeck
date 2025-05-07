@@ -89,7 +89,7 @@ function App() {
       />
     );
   } else if (activeTab === 'map') {
-    mainContent = <WeatherMap />;
+    mainContent = <WeatherMap isActive={activeTab === 'map'} />;
   } else {
     // Default welcome content
     mainContent = (

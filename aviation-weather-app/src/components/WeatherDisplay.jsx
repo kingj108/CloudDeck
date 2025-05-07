@@ -1,5 +1,14 @@
 import { useState, useEffect } from 'react';
 import { parseMetar, parseTaf } from '../utils/metarParser';
+import { getLocalTime } from '../utils/timeUtils';
+
+// Flight category colors
+const flightCategoryColors = {
+  VFR: '#3CB371', // Green
+  MVFR: '#4169E1', // Blue
+  IFR: '#FF4500', // Red
+  LIFR: '#FF69B4', // Pink
+};
 
 export default function WeatherDisplay({ metar, taf, favorites, onToggleFavorite, onRefresh, isRefreshing }) {
   const [isFavorite, setIsFavorite] = useState(false);
@@ -8,6 +17,17 @@ export default function WeatherDisplay({ metar, taf, favorites, onToggleFavorite
 
   const parsedMetar = parseMetar(metar?.raw);
   const parsedTaf = parseTaf(taf?.raw);
+
+  // Format cloud layers for display
+  const formatCloudLayers = (clouds) => {
+    if (!clouds || clouds.length === 0) return 'CLR';
+    
+    return clouds.map(cloud => {
+      const coverage = cloud.coverage || 'UNK';
+      const height = cloud.base_feet_agl ? `${Math.round(cloud.base_feet_agl/100)*100}` : 'UNK';
+      return `${coverage} @ ${height}'`;
+    }).join(', ');
+  };
 
   // Format wind direction
   const formatWind = (wind) => {
@@ -76,7 +96,7 @@ export default function WeatherDisplay({ metar, taf, favorites, onToggleFavorite
       {/* Timestamp */}
       {metar.timestamp && (
         <p className="text-sm text-gray-500 mt-1">
-          Updated: {new Date(metar.timestamp).toLocaleString()}
+          Updated: {getLocalTime(metar.timestamp, metar.station?.lat, metar.station?.lon)} (Local)
         </p>
       )}
       
@@ -107,6 +127,7 @@ export default function WeatherDisplay({ metar, taf, favorites, onToggleFavorite
                   <div><span className="font-semibold">Time:</span> {parsedMetar.time}</div>
                   <div><span className="font-semibold">Wind:</span> {parsedMetar.wind}</div>
                   <div><span className="font-semibold">Visibility:</span> {parsedMetar.visibility}</div>
+                  <div><span className="font-semibold">Clouds:</span> {formatCloudLayers(metar.clouds)}</div>
                   <div className="mt-1 text-sm">{parsedMetar.weather}</div>
                 </>
               ) : (
@@ -163,9 +184,19 @@ export default function WeatherDisplay({ metar, taf, favorites, onToggleFavorite
       <ul className="mt-2 list-disc list-inside space-y-1">
         <li><span className={windClass}>Wind: {formatWind(metar.wind)}</span></li>
         <li>Visibility: {formatVisibility(metar.visibility)}</li>
+        <li>Clouds: {formatCloudLayers(metar.clouds)}</li>
         <li>Temp / Dew: {formatTemp(metar.temp)} / {formatTemp(metar.dewpoint)}</li>
         <li>Altimeter: {metar.altim_in_hg} inHg</li>
-        <li>Category: {metar.flight_category}</li>
+        <li className="flex items-center">
+          <span>Category: </span>
+          <div className="flex items-center ml-2">
+            <div 
+              className="w-4 h-4 rounded-full mr-1" 
+              style={{ backgroundColor: flightCategoryColors[metar.flight_category] || '#808080' }}
+            ></div>
+            <span>{metar.flight_category}</span>
+          </div>
+        </li>
       </ul>
     </div>
   );

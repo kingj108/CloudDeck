@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import SearchForm from './SearchForm';
+import { getZuluTime } from '../utils/timeUtils';
 
 export default function Navbar({ 
   onSearch, 
@@ -9,17 +10,35 @@ export default function Navbar({
   isLoggedIn,
   currentUser
 }) {
+  const [zuluTime, setZuluTime] = useState(getZuluTime());
+
+  // Update Zulu time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setZuluTime(getZuluTime());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
   return (
     <nav className="bg-blue-900 py-2 px-4">
-      <div className="container mx-auto max-w-4xl flex flex-wrap items-center justify-between">
-        <div className="flex items-center">
-          <div className="flex items-center mr-6">
-            <h1 className="text-xl font-light tracking-tight">
-              <span className="font-bold text-blue-300">Cloud</span>
-              <span className="font-extralight text-white">Deck</span>
-            </h1>
+      <div className="container mx-auto max-w-6xl">
+        {/* Top row with logo and time */}
+        <div className="flex justify-between items-center mb-2">
+          <h1 className="text-xl font-light tracking-tight">
+            <span className="font-bold text-blue-300">Cloud</span>
+            <span className="font-extralight text-white">Deck</span>
+          </h1>
+          <div className="text-white text-sm font-mono bg-blue-800 px-3 py-1 rounded">
+            {zuluTime}
           </div>
-          <div className="flex space-x-1 ml-2">
+        </div>
+
+        {/* Bottom row with navigation and search */}
+        <div className="flex justify-between items-center">
+          {/* Navigation buttons */}
+          <div className="flex space-x-1">
             <button
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 activeTab === 'weather' 
@@ -51,25 +70,23 @@ export default function Navbar({
               {isLoggedIn ? 'My Account' : 'Login'}
             </button>
           </div>
-        </div>
-        
-        <div className="flex items-center space-x-4">
-          <SearchForm onSearch={onSearch} />
-          
-          {/* Settings button */}
-          <button 
-            className="px-4 py-2 bg-blue-800 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
-            onClick={onOpenSettings}
-          >
-            Settings
-          </button>
-          
-          {isLoggedIn && (
-            <div className="text-white text-sm">
-              <span className="bg-green-500 rounded-full w-2 h-2 inline-block mr-1"></span>
-              {currentUser.name}
-            </div>
-          )}
+
+          {/* Search and settings */}
+          <div className="flex items-center space-x-4">
+            <SearchForm onSearch={onSearch} />
+            <button 
+              className="px-4 py-2 bg-blue-800 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+              onClick={onOpenSettings}
+            >
+              Settings
+            </button>
+            {isLoggedIn && (
+              <div className="text-white text-sm">
+                <span className="bg-green-500 rounded-full w-2 h-2 inline-block mr-1"></span>
+                {currentUser.name}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </nav>
