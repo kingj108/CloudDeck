@@ -8,24 +8,64 @@ export const parseMetar = (raw) => {
   try {
     // Parse cloud layers
     const cloudTypes = ['CLR', 'SKC', 'FEW', 'SCT', 'BKN', 'OVC'];
-    const clouds = parts.filter(part => 
-      cloudTypes.some(type => part.startsWith(type))
-    ).map(cloud => {
-      const coverage = cloud.slice(0, 3);
-      const height = cloud.slice(3);
-      return {
-        coverage,
-        base_feet_agl: height ? parseInt(height) * 100 : null
-      };
-    });
+    const clouds = parts
+      .filter(part => cloudTypes.some(type => part.startsWith(type)))
+      .map(cloud => {
+        if (cloud === 'CLR' || cloud === 'SKC') {
+          return null;
+        }
+        const coverage = cloud.slice(0, 3);
+        const height = parseInt(cloud.slice(3)) * 100;
+        return {
+          coverage,
+          base_feet_agl: height
+        };
+      })
+      .filter(cloud => cloud !== null);
+
+    // Find visibility
+    const visibilityPart = parts.find(part => part.endsWith('SM'));
+    const visibility = visibilityPart ? parseFloat(visibilityPart.replace('SM', '')) : null;
+
+    // Find altimeter setting
+    const altimeterPart = parts.find(part => part.startsWith('A'));
+    const altimeter = altimeterPart ? 
+      (parseInt(altimeterPart.substring(1)) / 100).toFixed(2) : 
+      null;
 
     return {
       station: parts[0],
       time: parts[1],
       wind: parts[2],
-      visibility: parts[3],
+      visibility: visibility,
       clouds: clouds,
+      altimeter: altimeter,
       weather: parts.slice(4).join(' ')
+    };
+  } catch (error) {
+    console.error('Error parsing METAR:', error);
+    return { raw };
+  }
+};
+
+export const parseTaf = (raw) => {
+  if (!raw) return null;
+  
+  // Basic TAF format example:
+  // KATL 052324Z 0523/0624 12008KT P6SM SCT250 FM052300 13010KT P6SM BKN250
+  const lines = raw.split('\n');
+  const header = lines[0].split(' ');
+  
+  try {
+    return {
+      station: header[0],
+      issued: header[1],
+      validPeriod: header[2],
+      forecast: lines.slice(1).map(line => ({
+        changeIndicator: line.includes('FM') ? 'FROM' : 
+                         line.includes('TEMPO') ? 'TEMPORARY' : 'BECOMING',
+        conditions: line
+      }))
     };
   } catch {
     return { raw };
