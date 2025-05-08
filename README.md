@@ -63,6 +63,10 @@ You can toggle mock data in the UI for demo/testing purposes. This is useful whe
 
 📸 Social Preview
 
+🗺️ Map Data Attribution
+Map data is provided by OpenStreetMap.
+© OpenStreetMap contributors. Data is available under the Open Database License.
+
 📄 License
 MIT License — feel free to fork, build, and fly with it 🚁
 
