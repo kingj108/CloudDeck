@@ -26,13 +26,15 @@ export default function Navbar({
       <div className="container mx-auto max-w-6xl">
         {/* Top row with logo and time */}
         <div className="flex justify-between items-center mb-2">
-          <div 
-            onClick={() => setActiveTab('home')}
-            className="text-xl font-light tracking-tight cursor-pointer hover:opacity-80 transition-opacity"
+          <button 
+            onClick={() => setActiveTab('weather')}
+            className="text-xl font-light tracking-tight hover:opacity-80 transition-opacity"
           >
-            <span className="font-bold text-blue-300">Cloud</span>
-            <span className="font-extralight text-white">Deck</span>
-          </div>
+            <h1 className="flex items-center">
+              <span className="font-bold text-blue-300">Cloud</span>
+              <span className="font-extralight text-white">Deck</span>
+            </h1>
+          </button>
           <div className="text-white text-sm font-mono bg-blue-800 px-3 py-1 rounded">
             {zuluTime}
           </div>
@@ -64,11 +66,11 @@ export default function Navbar({
             </button>
             <button
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'flight-planning' 
+                activeTab === 'planning' 
                   ? 'bg-white text-blue-900' 
                   : 'text-white hover:bg-blue-800'
               }`}
-              onClick={() => setActiveTab('flight-planning')}
+              onClick={() => setActiveTab('planning')}
             >
               Flight Planning
             </button>
@@ -104,4 +106,4 @@ export default function Navbar({
       </div>
     </nav>
   );
-}
+} 

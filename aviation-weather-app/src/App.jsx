@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import WeatherDisplay from './components/WeatherDisplay';
 import WeatherMap from './components/WeatherMap';
+import FlightPlanning from './components/FlightPlanning';
 import LoadingIndicator from './components/LoadingIndicator';
 import ErrorMessage from './components/ErrorMessage';
 import { fetchMetar, fetchTaf } from './services/weatherApi';
@@ -14,7 +15,7 @@ function App() {
   const [error, setError] = useState('');
   
   // UI state
-  const [activeTab, setActiveTab] = useState('weather');
+  const [activeTab, setActiveTab] = useState('home');
   const [favorites, setFavorites] = useState([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   
@@ -40,6 +41,7 @@ function App() {
       
       setMetar(metarData);
       setTaf(tafData);
+      setActiveTab('weather');
     } catch (err) {
       console.error('Search error:', err);
       setError(err.message || 'Failed to fetch weather data');
@@ -90,43 +92,85 @@ function App() {
     );
   } else if (activeTab === 'map') {
     mainContent = <WeatherMap isActive={activeTab === 'map'} />;
+  } else if (activeTab === 'flight-planning') {
+    mainContent = <FlightPlanning />;
   } else {
-    // Default welcome content
+    // Home page content with improved styling
     mainContent = (
       <div className="flex flex-col items-center justify-center p-8 text-center">
-        <div className="flex items-center mb-6">
-          <img src="/images/CloudDeckicon.png" alt="CloudDeck Icon" className="w-16 h-16 mr-4" />
-          <h2 className="text-3xl font-bold text-blue-800">Welcome to CloudDeck</h2>
+        <div className="flex items-center mb-8">
+          <img src="/images/CloudDeckicon.png" alt="CloudDeck Icon" className="w-20 h-20 mr-4" />
+          <h2 className="text-4xl font-bold text-blue-900">Welcome to CloudDeck</h2>
         </div>
-        <p className="mb-8 text-gray-600 max-w-lg">
-          Your real-time aviation weather dashboard. Search for an airport by ICAO code to see current weather conditions.
+        
+        <p className="mb-8 text-gray-600 max-w-2xl text-lg leading-relaxed">
+          Your comprehensive aviation weather dashboard. Get real-time weather conditions, 
+          plan your flights, and stay informed with our interactive weather map.
         </p>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 w-full max-w-lg">
-          <button 
-            className="bg-blue-900 text-white border border-white px-6 py-3 rounded-md text-base font-medium hover:bg-blue-800 transition-colors"
-            onClick={() => handleSearch('KJFK')} 
-          >
-            <span className="mr-2">✈️</span> New York (KJFK)
-          </button>
-          <button 
-            className="bg-blue-900 text-white border border-white px-6 py-3 rounded-md text-base font-medium hover:bg-blue-800 transition-colors"
-            onClick={() => handleSearch('KLAX')} 
-          >
-            <span className="mr-2">✈️</span> Los Angeles (KLAX)
-          </button>
-          <button 
-            className="bg-blue-900 text-white border border-white px-6 py-3 rounded-md text-base font-medium hover:bg-blue-800 transition-colors"
-            onClick={() => handleSearch('KORD')} 
-          >
-            <span className="mr-2">✈️</span> Chicago (KORD)
-          </button>
-          <button 
-            className="bg-blue-900 text-white border border-white px-6 py-3 rounded-md text-base font-medium hover:bg-blue-800 transition-colors"
-            onClick={() => handleSearch('KATL')} 
-          >
-            <span className="mr-2">✈️</span> Atlanta (KATL)
-          </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12 w-full max-w-4xl">
+          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+            <h3 className="text-xl font-semibold text-blue-900 mb-3">Quick Weather</h3>
+            <p className="text-gray-600 mb-4">Get instant access to METAR and TAF for any airport worldwide.</p>
+            <button 
+              className="w-full bg-blue-900 text-white px-6 py-3 rounded-md text-base font-medium hover:bg-blue-800 transition-colors"
+              onClick={() => setActiveTab('weather')}
+            >
+              Check Weather
+            </button>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+            <h3 className="text-xl font-semibold text-blue-900 mb-3">Flight Planning</h3>
+            <p className="text-gray-600 mb-4">Compare weather conditions for your departure and arrival airports.</p>
+            <button 
+              className="w-full bg-blue-900 text-white px-6 py-3 rounded-md text-base font-medium hover:bg-blue-800 transition-colors"
+              onClick={() => setActiveTab('flight-planning')}
+            >
+              Plan Flight
+            </button>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+            <h3 className="text-xl font-semibold text-blue-900 mb-3">Weather Map</h3>
+            <p className="text-gray-600 mb-4">Interactive map showing real-time weather conditions across airports.</p>
+            <button 
+              className="w-full bg-blue-900 text-white px-6 py-3 rounded-md text-base font-medium hover:bg-blue-800 transition-colors"
+              onClick={() => setActiveTab('map')}
+            >
+              View Map
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-blue-50 rounded-lg p-8 w-full max-w-4xl">
+          <h3 className="text-2xl font-semibold text-blue-900 mb-4">Popular Airports</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <button 
+              className="bg-white text-blue-900 border border-blue-200 px-6 py-3 rounded-md text-base font-medium hover:bg-blue-100 transition-colors"
+              onClick={() => handleSearch('KJFK')} 
+            >
+              <span className="mr-2">✈️</span> KJFK
+            </button>
+            <button 
+              className="bg-white text-blue-900 border border-blue-200 px-6 py-3 rounded-md text-base font-medium hover:bg-blue-100 transition-colors"
+              onClick={() => handleSearch('KLAX')} 
+            >
+              <span className="mr-2">✈️</span> KLAX
+            </button>
+            <button 
+              className="bg-white text-blue-900 border border-blue-200 px-6 py-3 rounded-md text-base font-medium hover:bg-blue-100 transition-colors"
+              onClick={() => handleSearch('KORD')} 
+            >
+              <span className="mr-2">✈️</span> KORD
+            </button>
+            <button 
+              className="bg-white text-blue-900 border border-blue-200 px-6 py-3 rounded-md text-base font-medium hover:bg-blue-100 transition-colors"
+              onClick={() => handleSearch('KATL')} 
+            >
+              <span className="mr-2">✈️</span> KATL
+            </button>
+          </div>
         </div>
       </div>
     );

@@ -136,47 +136,53 @@ export default function WeatherMap({ isActive }) {
   }
 
   if (loading && !mapData.length) {
-    return <LoadingIndicator />;
+    return (
+      <div className="p-4 flex justify-center">
+        <div className="loading-spinner h-12 w-12"></div>
+      </div>
+    );
   }
 
   return (
-    <div className="p-4">
-      <h2 className="text-xl font-semibold mb-4">Weather Map</h2>
+    <div className="p-4 space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-gray-800">Weather Map</h2>
+        {lastUpdate && (
+          <div className="text-sm text-gray-500">
+            Last updated: {lastUpdate.toLocaleTimeString()}
+          </div>
+        )}
+      </div>
 
-      {/* Legend and last update time */}
-      <div className="bg-white p-4 rounded-lg shadow mb-4">
-        <div className="flex justify-between items-center mb-2">
-          <div className="text-sm text-gray-600">Flight Categories:</div>
-          {lastUpdate && (
-            <div className="text-sm text-gray-500">
-              Last updated: {lastUpdate.toLocaleTimeString()}
-            </div>
-          )}
-        </div>
+      {/* Legend */}
+      <div className="glass-panel p-4">
         <div className="flex flex-wrap gap-4">
           {Object.entries(getFlightCategoryColor.COLORS || {}).map(([category, color]) => (
             <div key={category} className="flex items-center">
-              <div
-                className="w-4 h-4 rounded-full mr-1"
-                style={{ backgroundColor: color, border: '2px solid white' }}
-              ></div>
-              <span className="text-sm">{category}</span>
+              <div className={`category-badge ${category.toLowerCase()}`}>
+                {category}
+              </div>
             </div>
           ))}
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4">
-          {error}
+        <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-100">
+          <div className="flex items-center">
+            <svg className="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+            {error}
+          </div>
         </div>
       )}
 
-      <div className="bg-white rounded-lg overflow-hidden shadow" style={{ height: '500px' }}>
+      <div className="weather-card" style={{ height: '600px' }}>
         <MapContainer
-          center={[39.8283, -98.5795]} // Center of the US
+          center={[39.8283, -98.5795]}
           zoom={4}
-          style={{ height: '100%', width: '100%' }}
+          style={{ height: '100%', width: '100%', borderRadius: '0.75rem' }}
           scrollWheelZoom={true}
         >
           <TileLayer
@@ -191,7 +197,9 @@ export default function WeatherMap({ isActive }) {
               icon={createCustomIcon(airport.category)}
             >
               <Popup>
-                {airport.details}
+                <div className="glass-panel p-3">
+                  {airport.details}
+                </div>
               </Popup>
             </Marker>
           ))}
