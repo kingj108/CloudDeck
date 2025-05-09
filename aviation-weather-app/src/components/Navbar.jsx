@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import SearchForm from './SearchForm';
 import { getZuluTime } from '../utils/timeUtils';
 
@@ -11,6 +12,7 @@ export default function Navbar({
   currentUser
 }) {
   const [zuluTime, setZuluTime] = useState(getZuluTime());
+  const navigate = useNavigate();
 
   // Update Zulu time every second
   useEffect(() => {
@@ -21,18 +23,23 @@ export default function Navbar({
     return () => clearInterval(timer);
   }, []);
 
+  const handleLoginClick = () => {
+    navigate('/login');
+  };
+
   return (
     <nav className="bg-blue-900 py-2 px-4">
       <div className="container mx-auto max-w-6xl">
         {/* Top row with logo and time */}
         <div className="flex justify-between items-center mb-2">
-          <div 
+          <Link 
+            to="/"
             onClick={() => setActiveTab('home')}
             className="text-xl font-light tracking-tight cursor-pointer hover:opacity-80 transition-opacity"
           >
             <span className="font-bold text-blue-300">Cloud</span>
             <span className="font-extralight text-white">Deck</span>
-          </div>
+          </Link>
           <div className="text-white text-sm font-mono bg-blue-800 px-3 py-1 rounded">
             {zuluTime}
           </div>
@@ -78,9 +85,9 @@ export default function Navbar({
                   ? 'bg-white text-blue-900' 
                   : 'text-white hover:bg-blue-800'
               }`}
-              onClick={() => setActiveTab('account')}
+              onClick={handleLoginClick}
             >
-              {isLoggedIn ? 'My Account' : 'Login'}
+              {isLoggedIn ? 'My Account' : 'Login / Sign Up'}
             </button>
           </div>
 

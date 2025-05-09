@@ -1,5 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { GoogleOAuthProvider } from '@react-oauth/google'
 import App from './App'
 import './index.css'
 
@@ -43,11 +44,16 @@ class ErrorBoundary extends React.Component {
 // Initialize the app
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
+// Use a default or dummy client ID if none is provided
+const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'temporary-client-id';
+
 // Wrap the app with error boundary and strict mode
 root.render(
   <React.StrictMode>
     <ErrorBoundary>
-      <App />
+      <GoogleOAuthProvider clientId={clientId}>
+        <App />
+      </GoogleOAuthProvider>
     </ErrorBoundary>
   </React.StrictMode>
 );

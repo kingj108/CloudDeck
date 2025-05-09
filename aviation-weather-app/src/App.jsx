@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import WeatherDisplay from './components/WeatherDisplay';
 import WeatherMap from './components/WeatherMap';
 import FlightPlanning from './components/FlightPlanning';
 import LoadingIndicator from './components/LoadingIndicator';
 import ErrorMessage from './components/ErrorMessage';
+import LoginPage from './pages/LoginPage';
 import { fetchMetar, fetchTaf } from './services/weatherApi';
 
-function App() {
+// Wrap the main app content
+function AppContent() {
   // Weather data state
   const [metar, setMetar] = useState(null);
   const [taf, setTaf] = useState(null);
@@ -19,6 +22,21 @@ function App() {
   const [favorites, setFavorites] = useState([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   
+  // Auth state
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  
+  const location = useLocation();
+
+  // Update active tab based on route
+  useEffect(() => {
+    const path = location.pathname;
+    if (path === '/') setActiveTab('home');
+    else if (path === '/weather') setActiveTab('weather');
+    else if (path === '/map') setActiveTab('map');
+    else if (path === '/flight-planning') setActiveTab('flight-planning');
+  }, [location]);
+
   // Search handler
   const handleSearch = async (icao) => {
     if (!icao) {
@@ -71,6 +89,19 @@ function App() {
       setFavorites([...favorites, icao]);
     }
   };
+
+  // Handle login
+  const handleLogin = (userData) => {
+    setIsLoggedIn(true);
+    setCurrentUser(userData);
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setCurrentUser(null);
+    setFavorites([]);
+  };
   
   // Render main content based on active tab
   let mainContent;
@@ -95,7 +126,7 @@ function App() {
   } else if (activeTab === 'flight-planning') {
     mainContent = <FlightPlanning />;
   } else {
-    // Home page content with improved styling
+    // Home page content
     mainContent = (
       <div className="flex flex-col items-center justify-center p-8 text-center">
         <div className="flex items-center mb-8">
@@ -183,13 +214,25 @@ function App() {
         setActiveTab={setActiveTab}
         onSearch={handleSearch}
         onOpenSettings={() => console.log('Settings clicked')}
-        isLoggedIn={false}
-        currentUser={null}
+        isLoggedIn={isLoggedIn}
+        currentUser={currentUser}
       />
       <main className="container mx-auto max-w-4xl p-4">
         {mainContent}
       </main>
     </div>
+  );
+}
+
+// Main App component with Router
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/*" element={<AppContent />} />
+      </Routes>
+    </Router>
   );
 }
 
