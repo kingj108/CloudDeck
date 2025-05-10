@@ -2,118 +2,130 @@ import { useState } from 'react';
 import WeatherDisplay from './WeatherDisplay';
 import { fetchMetar, fetchTaf } from '../services/weatherApi';
 
-export default function FlightPlanning() {
-  const [departureData, setDepartureData] = useState({ metar: null, taf: null });
-  const [arrivalData, setArrivalData] = useState({ metar: null, taf: null });
+export default function FlightPlanning({ onSearch }) {
+  const [departureICAO, setDepartureICAO] = useState('');
+  const [arrivalICAO, setArrivalICAO] = useState('');
+  const [departureData, setDepartureData] = useState(null);
+  const [arrivalData, setArrivalData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleAirportSearch = async (icao, isArrival) => {
-    if (!icao) {
-      setError('Please enter an airport code');
-      return;
-    }
-    
-    setLoading(true);
-    setError('');
-    
-    try {
-      const [metarData, tafData] = await Promise.all([
-        fetchMetar(icao),
-        fetchTaf(icao)
-      ]);
-      
-      if (!metarData?.data?.[0]?.raw) {
-        throw new Error('No weather data available for this airport');
-      }
-
-      if (isArrival) {
-        setArrivalData({ metar: metarData.data[0], taf: tafData.data[0] });
+  const handleSearch = (type, icao) => {
+    const upperICAO = icao.toUpperCase();
+    onSearch(upperICAO).then(data => {
+      if (type === 'departure') {
+        setDepartureData(data);
+        setDepartureICAO(upperICAO);
       } else {
-        setDepartureData({ metar: metarData.data[0], taf: tafData.data[0] });
+        setArrivalData(data);
+        setArrivalICAO(upperICAO);
       }
-    } catch (err) {
-      console.error('Search error:', err);
-      setError(err.message || 'Failed to fetch weather data');
-      if (isArrival) {
-        setArrivalData({ metar: null, taf: null });
-      } else {
-        setDepartureData({ metar: null, taf: null });
-      }
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Departure Section */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-2xl font-bold text-blue-900 mb-4">Departure</h2>
-          <div className="flex space-x-2 mb-4">
-            <input
-              type="text"
-              placeholder="Enter departure ICAO"
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  handleAirportSearch(e.target.value, false);
-                }
-              }}
-            />
-            <button
-              className="px-4 py-2 bg-blue-900 text-white rounded-md hover:bg-blue-800"
-              onClick={(e) => handleAirportSearch(e.target.previousElementSibling.value, false)}
-            >
-              Search
-            </button>
+    <div className="pt-20 px-6">
+      <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-lg p-6">
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">Flight Planning</h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Departure Section */}
+          <div className="space-y-4">
+            <div className="flex items-center space-x-4">
+              <label className="text-lg font-semibold text-gray-700">Departure:</label>
+              <div className="flex-1">
+                <input
+                  type="text"
+                  value={departureICAO}
+                  onChange={(e) => setDepartureICAO(e.target.value.toUpperCase())}
+                  placeholder="Enter ICAO (e.g., KJFK)"
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  maxLength={4}
+                />
+              </div>
+              <button
+                onClick={() => handleSearch('departure', departureICAO)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                disabled={!departureICAO}
+              >
+                Search
+              </button>
+            </div>
+            {departureData && (
+              <div className="glass-panel">
+                <WeatherDisplay
+                  metar={departureData.metar}
+                  taf={departureData.taf}
+                  onRefresh={() => handleSearch('departure', departureICAO)}
+                />
+              </div>
+            )}
           </div>
-          {departureData.metar && (
-            <WeatherDisplay
-              metar={departureData.metar}
-              taf={departureData.taf}
-              compact={true}
-            />
-          )}
+
+          {/* Arrival Section */}
+          <div className="space-y-4">
+            <div className="flex items-center space-x-4">
+              <label className="text-lg font-semibold text-gray-700">Arrival:</label>
+              <div className="flex-1">
+                <input
+                  type="text"
+                  value={arrivalICAO}
+                  onChange={(e) => setArrivalICAO(e.target.value.toUpperCase())}
+                  placeholder="Enter ICAO (e.g., KLAX)"
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  maxLength={4}
+                />
+              </div>
+              <button
+                onClick={() => handleSearch('arrival', arrivalICAO)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                disabled={!arrivalICAO}
+              >
+                Search
+              </button>
+            </div>
+            {arrivalData && (
+              <div className="glass-panel">
+                <WeatherDisplay
+                  metar={arrivalData.metar}
+                  taf={arrivalData.taf}
+                  onRefresh={() => handleSearch('arrival', arrivalICAO)}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Arrival Section */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-2xl font-bold text-blue-900 mb-4">Arrival</h2>
-          <div className="flex space-x-2 mb-4">
-            <input
-              type="text"
-              placeholder="Enter arrival ICAO"
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  handleAirportSearch(e.target.value, true);
-                }
-              }}
-            />
-            <button
-              className="px-4 py-2 bg-blue-900 text-white rounded-md hover:bg-blue-800"
-              onClick={(e) => handleAirportSearch(e.target.previousElementSibling.value, true)}
-            >
-              Search
-            </button>
+        {/* Additional Flight Info Section */}
+        {departureData && arrivalData && (
+          <div className="mt-8 glass-panel p-6">
+            <h3 className="text-xl font-semibold text-gray-800 mb-4">Flight Overview</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="text-center">
+                <div className="text-sm text-gray-600">Distance</div>
+                <div className="text-2xl font-bold text-blue-600">
+                  {/* You can add distance calculation here */}
+                  --
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm text-gray-600">Est. Flight Time</div>
+                <div className="text-2xl font-bold text-blue-600">
+                  {/* You can add flight time estimation here */}
+                  --
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm text-gray-600">Time Zone Change</div>
+                <div className="text-2xl font-bold text-blue-600">
+                  {/* You can add time zone difference here */}
+                  --
+                </div>
+              </div>
+            </div>
           </div>
-          {arrivalData.metar && (
-            <WeatherDisplay
-              metar={arrivalData.metar}
-              taf={arrivalData.taf}
-              compact={true}
-            />
-          )}
-        </div>
+        )}
       </div>
-
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
-          {error}
-        </div>
-      )}
     </div>
   );
 } 

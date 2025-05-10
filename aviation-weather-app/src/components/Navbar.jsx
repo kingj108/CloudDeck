@@ -27,9 +27,13 @@ export default function Navbar({
     navigate('/login');
   };
 
+  const handleLogout = () => {
+    // Implement logout functionality
+  };
+
   return (
-    <nav className="bg-blue-900 py-2 px-4">
-      <div className="container mx-auto max-w-6xl">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-blue-900 shadow-lg">
+      <div className="container mx-auto max-w-6xl px-4 py-2">
         {/* Top row with logo and time */}
         <div className="flex justify-between items-center mb-2">
           <Link 
@@ -46,66 +50,67 @@ export default function Navbar({
         </div>
 
         {/* Bottom row with navigation and search */}
-        <div className="flex justify-between items-center">
-          {/* Navigation buttons */}
-          <div className="flex space-x-1">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex items-center space-x-6">
             <button
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'weather' 
-                  ? 'bg-white text-blue-900' 
-                  : 'text-white hover:bg-blue-800'
+              onClick={() => {
+                setActiveTab('weather');
+                navigate('/weather');
+              }}
+              className={`text-sm font-medium transition-colors ${
+                activeTab === 'weather' ? 'text-white' : 'text-blue-300 hover:text-white'
               }`}
-              onClick={() => setActiveTab('weather')}
             >
               Weather
             </button>
             <button
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'map' 
-                  ? 'bg-white text-blue-900' 
-                  : 'text-white hover:bg-blue-800'
+              onClick={() => {
+                setActiveTab('map');
+                navigate('/map');
+              }}
+              className={`text-sm font-medium transition-colors ${
+                activeTab === 'map' ? 'text-white' : 'text-blue-300 hover:text-white'
               }`}
-              onClick={() => setActiveTab('map')}
             >
-              Weather Map
+              Map
             </button>
             <button
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'flight-planning' 
-                  ? 'bg-white text-blue-900' 
-                  : 'text-white hover:bg-blue-800'
+              onClick={() => {
+                setActiveTab('flight-planning');
+                navigate('/flight-planning');
+              }}
+              className={`text-sm font-medium transition-colors ${
+                activeTab === 'flight-planning' ? 'text-white' : 'text-blue-300 hover:text-white'
               }`}
-              onClick={() => setActiveTab('flight-planning')}
             >
               Flight Planning
             </button>
-            <button
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'account' 
-                  ? 'bg-white text-blue-900' 
-                  : 'text-white hover:bg-blue-800'
-              }`}
-              onClick={handleLoginClick}
-            >
-              {isLoggedIn ? 'My Account' : 'Login / Sign Up'}
-            </button>
           </div>
 
-          {/* Search and settings */}
           <div className="flex items-center space-x-4">
             <SearchForm onSearch={onSearch} />
-            <button 
-              className="px-4 py-2 bg-blue-800 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
-              onClick={onOpenSettings}
-            >
-              Settings
-            </button>
-            {isLoggedIn && (
-              <div className="text-white text-sm">
-                <span className="bg-green-500 rounded-full w-2 h-2 inline-block mr-1"></span>
-                {currentUser.name}
-              </div>
+            {isLoggedIn ? (
+              <button
+                onClick={handleLogout}
+                className="text-sm text-blue-300 hover:text-white transition-colors"
+              >
+                Logout
+              </button>
+            ) : (
+              <button
+                onClick={handleLoginClick}
+                className="text-sm text-blue-300 hover:text-white transition-colors"
+              >
+                Login
+              </button>
             )}
+            <button
+              onClick={onOpenSettings}
+              className="text-blue-300 hover:text-white transition-colors"
+            >
+              <span className="sr-only">Settings</span>
+              ⚙️
+            </button>
           </div>
         </div>
       </div>

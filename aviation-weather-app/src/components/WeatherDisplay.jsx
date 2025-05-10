@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { parseMetar, parseTaf } from '../utils/metarParser';
 import { getLocalTime } from '../utils/timeUtils';
+import FlightCategoryIndicator from './FlightCategoryIndicator';
 
 // Flight category colors
 const flightCategoryColors = {
@@ -78,137 +79,139 @@ export default function WeatherDisplay({ metar, taf, favorites, onToggleFavorite
   };
 
   return (
-    <div className="weather-display bg-white p-4 rounded shadow space-y-4">
-      {/* Header */}
-      <div className="flex justify-between items-start">
-        <h2 className="text-xl font-bold">
-          {metar.station?.name || 'Weather Data'}
-        </h2>
-        <div className="flex space-x-2">
-          <button 
-            onClick={onRefresh}
-            disabled={isRefreshing}
-            className={`p-1 ${isRefreshing ? 'text-gray-400' : 'text-blue-600 hover:text-blue-800'}`}
-            title={isRefreshing ? 'Refreshing...' : 'Refresh data'}
-          >
-            {isRefreshing ? '⏳' : '🔄'}
-          </button>
-          <button 
-            onClick={handleToggleFavorite}
-            className={`favorite-btn text-xl ${isFavorite ? 'active' : ''}`}
-          >
-            ★
-          </button>
-        </div>
-      </div>
-      
-      {/* Timestamp */}
-      {metar.timestamp && (
-        <p className="text-sm text-gray-500 mt-1">
-          Updated: {getLocalTime(metar.timestamp, metar.station?.lat, metar.station?.lon)} (Local)
-        </p>
-      )}
-      
-      {/* METAR Display */}
-      <div className="metar-section">
-        <div className="flex justify-between items-center mb-1">
-          <h3 className="font-bold text-lg">METAR</h3>
-          <button 
-            onClick={() => setShowRawMetar(!showRawMetar)}
-            className={`px-3 py-1 rounded-md text-sm font-medium ${showRawMetar 
-              ? 'bg-blue-800 text-white border border-white' 
-              : 'bg-white text-blue-800 border border-blue-800'}`}
-          >
-            {showRawMetar ? 'Show Parsed' : 'Show Raw'}
-          </button>
+    <div className="pt-20 px-6">
+      <div className="weather-display bg-white p-6 rounded-lg shadow-lg space-y-4 max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="flex justify-between items-start">
+          <h2 className="text-2xl font-bold text-gray-800">
+            {metar.station?.name || metar.station?.icao || 'Weather Data'}
+          </h2>
+          <div className="flex space-x-2">
+            <button 
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              className={`p-1 ${isRefreshing ? 'text-gray-400' : 'text-blue-600 hover:text-blue-800'}`}
+              title={isRefreshing ? 'Refreshing...' : 'Refresh data'}
+            >
+              {isRefreshing ? '⏳' : '🔄'}
+            </button>
+            <button 
+              onClick={handleToggleFavorite}
+              className={`favorite-btn text-xl ${isFavorite ? 'active' : ''}`}
+            >
+              ★
+            </button>
+          </div>
         </div>
         
-        {showRawMetar ? (
-          <div className="font-mono bg-gray-100 p-3 rounded text-sm whitespace-pre-wrap">
-            {formatRawData(metar?.raw)}
+        {/* Timestamp */}
+        {metar.timestamp && (
+          <p className="text-sm text-gray-500 mt-1">
+            Updated: {getLocalTime(metar.timestamp, metar.station?.lat, metar.station?.lon)} (Local)
+          </p>
+        )}
+        
+        {/* METAR Display */}
+        <div className="metar-section">
+          <div className="flex justify-between items-center mb-1">
+            <h3 className="font-bold text-lg">METAR</h3>
+            <button 
+              onClick={() => setShowRawMetar(!showRawMetar)}
+              className={`px-3 py-1 rounded-md text-sm font-medium ${showRawMetar 
+                ? 'bg-blue-800 text-white border border-white' 
+                : 'bg-white text-blue-800 border border-blue-800'}`}
+            >
+              {showRawMetar ? 'Show Parsed' : 'Show Raw'}
+            </button>
           </div>
-        ) : (
-          <>
-            <div className="font-mono bg-gray-100 p-2 rounded">
-              {parsedMetar ? (
-                <>
-                  <div><span className="font-semibold">Station:</span> {parsedMetar.station}</div>
-                  <div><span className="font-semibold">Time:</span> {parsedMetar.time}</div>
-                  <div><span className="font-semibold">Wind:</span> {parsedMetar.wind}</div>
-                  <div><span className="font-semibold">Visibility:</span> {parsedMetar.visibility}</div>
-                  <div><span className="font-semibold">Clouds:</span> {formatCloudLayers(metar.clouds)}</div>
-                  <div><span className="font-semibold">Temperature:</span> {formatTemp(metar.temp)}</div>
-                  <div><span className="font-semibold">Altimeter:</span> {formatAltimeter(parsedMetar.altimeter)}</div>
-                  <div className="mt-1 text-sm">{parsedMetar.weather}</div>
-                </>
-              ) : (
-                <pre className="whitespace-pre-wrap">{metar?.raw}</pre>
-              )}
+          
+          {showRawMetar ? (
+            <div className="font-mono bg-gray-100 p-3 rounded text-sm whitespace-pre-wrap">
+              {formatRawData(metar?.raw)}
             </div>
-          </>
-        )}
-      </div>
-      
-      {/* TAF Display */}
-      <div className="taf-section">
-        <div className="flex justify-between items-center mb-1">
-          <h3 className="font-bold text-lg">TAF</h3>
-          <button 
-            onClick={() => setShowRawTaf(!showRawTaf)}
-            className={`px-3 py-1 rounded-md text-sm font-medium ${showRawTaf 
-              ? 'bg-blue-800 text-white border border-white' 
-              : 'bg-white text-blue-800 border border-blue-800'}`}
-          >
-            {showRawTaf ? 'Show Parsed' : 'Show Raw'}
-          </button>
+          ) : (
+            <>
+              <div className="font-mono bg-gray-100 p-2 rounded">
+                {parsedMetar ? (
+                  <>
+                    <div><span className="font-semibold">Station:</span> {parsedMetar.station}</div>
+                    <div><span className="font-semibold">Time:</span> {parsedMetar.time}</div>
+                    <div><span className="font-semibold">Wind:</span> {parsedMetar.wind}</div>
+                    <div><span className="font-semibold">Visibility:</span> {parsedMetar.visibility}</div>
+                    <div><span className="font-semibold">Clouds:</span> {formatCloudLayers(metar.clouds)}</div>
+                    <div><span className="font-semibold">Temperature:</span> {formatTemp(metar.temp)}</div>
+                    <div><span className="font-semibold">Altimeter:</span> {formatAltimeter(parsedMetar.altimeter)}</div>
+                    <div className="mt-1 text-sm">{parsedMetar.weather}</div>
+                  </>
+                ) : (
+                  <pre className="whitespace-pre-wrap">{metar?.raw}</pre>
+                )}
+              </div>
+            </>
+          )}
         </div>
         
-        {showRawTaf ? (
-          <div className="font-mono bg-blue-50 p-3 rounded text-sm whitespace-pre-wrap">
-            {formatRawData(taf?.raw)}
+        {/* TAF Display */}
+        <div className="taf-section">
+          <div className="flex justify-between items-center mb-1">
+            <h3 className="font-bold text-lg">TAF</h3>
+            <button 
+              onClick={() => setShowRawTaf(!showRawTaf)}
+              className={`px-3 py-1 rounded-md text-sm font-medium ${showRawTaf 
+                ? 'bg-blue-800 text-white border border-white' 
+                : 'bg-white text-blue-800 border border-blue-800'}`}
+            >
+              {showRawTaf ? 'Show Parsed' : 'Show Raw'}
+            </button>
           </div>
-        ) : (
-          <>
-            {parsedTaf ? (
-              <div className="font-mono bg-blue-50 p-2 rounded">
-                <div><span className="font-semibold">Station:</span> {parsedTaf.station}</div>
-                <div><span className="font-semibold">Issued:</span> {parsedTaf.issued}</div>
-                <div><span className="font-semibold">Valid:</span> {parsedTaf.validPeriod}</div>
-                
-                {parsedTaf.forecast?.map((fc, i) => (
-                  <div key={i} className="mt-2 p-1 border-t border-blue-100">
-                    <div className="font-semibold">{fc.changeIndicator}</div>
-                    <div className="text-sm">{fc.conditions}</div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <pre className="font-mono bg-blue-50 p-2 rounded whitespace-pre-wrap">
-                {taf?.raw}
-              </pre>
-            )}
-          </>
-        )}
+          
+          {showRawTaf ? (
+            <div className="font-mono bg-blue-50 p-3 rounded text-sm whitespace-pre-wrap">
+              {formatRawData(taf?.raw)}
+            </div>
+          ) : (
+            <>
+              {parsedTaf ? (
+                <div className="font-mono bg-blue-50 p-2 rounded">
+                  <div><span className="font-semibold">Station:</span> {parsedTaf.station}</div>
+                  <div><span className="font-semibold">Issued:</span> {parsedTaf.issued}</div>
+                  <div><span className="font-semibold">Valid:</span> {parsedTaf.validPeriod}</div>
+                  
+                  {parsedTaf.forecast?.map((fc, i) => (
+                    <div key={i} className="mt-2 p-1 border-t border-blue-100">
+                      <div className="font-semibold">{fc.changeIndicator}</div>
+                      <div className="text-sm">{fc.conditions}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <pre className="font-mono bg-blue-50 p-2 rounded whitespace-pre-wrap">
+                  {taf?.raw}
+                </pre>
+              )}
+            </>
+          )}
+        </div>
+        
+        {/* Additional METAR Data */}
+        <ul className="mt-2 list-disc list-inside space-y-1">
+          <li><span className={windClass}>Wind: {formatWind(metar.wind)}</span></li>
+          <li>Visibility: {formatVisibility(metar.visibility)}</li>
+          <li>Clouds: {formatCloudLayers(metar.clouds)}</li>
+          <li>Temp / Dew: {formatTemp(metar.temp)} / {formatTemp(metar.dewpoint)}</li>
+          <li>Altimeter: {formatAltimeter(metar.altim_in_hg)}</li>
+          <li className="flex items-center">
+            <span>Category: </span>
+            <div className="flex items-center ml-2">
+              <div 
+                className="w-4 h-4 rounded-full mr-1" 
+                style={{ backgroundColor: flightCategoryColors[metar.flight_category] || '#808080' }}
+              ></div>
+              <span>{metar.flight_category}</span>
+            </div>
+          </li>
+        </ul>
       </div>
-      
-      {/* Additional METAR Data */}
-      <ul className="mt-2 list-disc list-inside space-y-1">
-        <li><span className={windClass}>Wind: {formatWind(metar.wind)}</span></li>
-        <li>Visibility: {formatVisibility(metar.visibility)}</li>
-        <li>Clouds: {formatCloudLayers(metar.clouds)}</li>
-        <li>Temp / Dew: {formatTemp(metar.temp)} / {formatTemp(metar.dewpoint)}</li>
-        <li>Altimeter: {formatAltimeter(metar.altim_in_hg)}</li>
-        <li className="flex items-center">
-          <span>Category: </span>
-          <div className="flex items-center ml-2">
-            <div 
-              className="w-4 h-4 rounded-full mr-1" 
-              style={{ backgroundColor: flightCategoryColors[metar.flight_category] || '#808080' }}
-            ></div>
-            <span>{metar.flight_category}</span>
-          </div>
-        </li>
-      </ul>
     </div>
   );
 }
