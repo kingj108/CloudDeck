@@ -23,20 +23,6 @@ export default function SearchForm({ onSearch }) {
     onSearch(icaoCode);
   };
 
-  const searchButtonStyle = {
-    backgroundColor: '#002366',
-    color: 'white',
-    border: '1px solid white',
-    padding: '8px 20px',
-    borderRadius: '0 4px 4px 0',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-    '&:hover': {
-      backgroundColor: '#003399',
-    }
-  };
-
   return (
     <div className="relative">
       <form onSubmit={handleSubmit} className="flex">
@@ -50,7 +36,9 @@ export default function SearchForm({ onSearch }) {
               if (error) setError('');
             }}
             placeholder="ICAO code (e.g. KJFK)"
-            className="border border-gray-300 rounded-l px-4 py-2 w-40 text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+            className="h-10 border border-gray-300 rounded-l px-4 w-40 text-gray-800 
+              text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 
+              focus:border-transparent shadow-sm"
             aria-label="Airport ICAO code"
           />
           {error && (
@@ -61,7 +49,9 @@ export default function SearchForm({ onSearch }) {
         </div>
         <button 
           type="submit" 
-          style={searchButtonStyle}
+          className="h-10 px-4 bg-blue-900 text-white border-2 border-white 
+            rounded-r font-semibold hover:bg-blue-800 transition-colors 
+            duration-200 shadow-sm"
           aria-label="Search for airport weather"
         >
           Search

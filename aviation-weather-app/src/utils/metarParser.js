@@ -6,21 +6,56 @@ export const parseMetar = (raw) => {
   const parts = raw.split(' ');
   
   try {
-    // Find altimeter setting
-    const altimeterPart = parts.find(part => part.startsWith('A'));
+    // Parse cloud layers
+    const cloudTypes = ['CLR', 'SKC', 'FEW', 'SCT', 'BKN', 'OVC'];
+    const clouds = parts
+      .filter(part => cloudTypes.some(type => part.startsWith(type)))
+      .map(cloud => {
+        if (cloud === 'CLR' || cloud === 'SKC') {
+          return null;
+        }
+        const coverage = cloud.slice(0, 3);
+        const height = parseInt(cloud.slice(3)) * 100;
+        return {
+          coverage,
+          base_feet_agl: height
+        };
+      })
+      .filter(cloud => cloud !== null);
+
+    // Find visibility
+    const visibilityPart = parts.find(part => part.endsWith('SM'));
+    const visibility = visibilityPart ? parseFloat(visibilityPart.replace('SM', '')) : null;
+
+    // Find altimeter setting - improved parsing with fixed decimal places
+    const altimeterPart = parts.find(part => /^A\d{4}$/.test(part));
     const altimeter = altimeterPart ? 
-      (parseInt(altimeterPart.substring(1)) / 100).toFixed(2) : 
+      Number((parseInt(altimeterPart.substring(1)) / 100).toFixed(2)) : 
       null;
+
+    // Find temperature/dewpoint
+    const tempPart = parts.find(part => /^[M]?\d{2}\/[M]?\d{2}$/.test(part));
+    let temp = null;
+    let dewpoint = null;
+    if (tempPart) {
+      const [tempStr, dewStr] = tempPart.split('/');
+      temp = parseInt(tempStr.replace('M', '-'));
+      dewpoint = parseInt(dewStr.replace('M', '-'));
+    }
 
     return {
       station: parts[0],
       time: parts[1],
       wind: parts[2],
-      visibility: parts[3],
-      altimeter: altimeter,  // Add altimeter to the parsed data
+      visibility: visibility,
+      clouds: clouds,
+      altimeter: altimeter,
+      temp: temp,
+      dewpoint: dewpoint,
       weather: parts.slice(4).join(' ')
     };
-  } catch {
+  } catch (error) {
+    console.error('Error parsing METAR:', error);
     return { raw };
   }
 };

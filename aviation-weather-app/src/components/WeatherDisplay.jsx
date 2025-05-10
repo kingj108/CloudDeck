@@ -199,7 +199,7 @@ export default function WeatherDisplay({ metar, taf, favorites, onToggleFavorite
           <li>Visibility: {formatVisibility(metar.visibility)}</li>
           <li>Clouds: {formatCloudLayers(metar.clouds)}</li>
           <li>Temp / Dew: {formatTemp(metar.temp)} / {formatTemp(metar.dewpoint)}</li>
-          <li>Altimeter: {formatAltimeter(metar.altim_in_hg)}</li>
+          <li>Altimeter: {formatAltimeter(parsedMetar?.altimeter)}</li>
           <li className="flex items-center">
             <span>Category: </span>
             <div className="flex items-center ml-2">
