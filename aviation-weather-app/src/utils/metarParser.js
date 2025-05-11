@@ -1,3 +1,4 @@
+//METAR Parser
 export const parseMetar = (raw) => {
   if (!raw) return null;
   
@@ -59,7 +60,7 @@ export const parseMetar = (raw) => {
     return { raw };
   }
 };
-
+//TAF Parser
 export const parseTaf = (raw) => {
   if (!raw) return null;
   

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import WeatherDisplay from './components/WeatherDisplay';
 import WeatherMap from './components/WeatherMap';
@@ -18,7 +18,7 @@ function AppContent() {
   const [taf, setTaf] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+  //User interface state
   // UI state
   const [activeTab, setActiveTab] = useState('home');
   const [favorites, setFavorites] = useState([]);
@@ -29,6 +29,7 @@ function AppContent() {
   const [currentUser, setCurrentUser] = useState(null);
   
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Update active tab based on route
   useEffect(() => {
@@ -61,6 +62,12 @@ function AppContent() {
       
       setMetar(metarData.data[0]);
       setTaf(tafData.data[0]);
+      
+      // Navigate to weather page after successful search
+      if (location.pathname !== '/weather') {
+        setActiveTab('weather');
+        navigate('/weather');
+      }
       
       // Return the data for use in other components like FlightPlanning
       return {

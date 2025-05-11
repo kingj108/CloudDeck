@@ -113,9 +113,12 @@ export const fetchMetar = async (icao) => {
           icao: icaoUpper,
           name: metarData.station?.name || icaoUpper
         },
-        flight_category: parsedData.category || metarData.flight_category || determineFlightCategory(parsedData.visibility),
+        flight_category: parsedData.category || metarData.flight_category || determineFlightCategory(parsedData.visibility, parsedData.clouds),
         temp: {
           celsius: parsedData.temp || metarData.temperature?.celsius || metarData.temp?.celsius || metarData.temp_c
+        },
+        dewpoint: {
+          celsius: parsedData.dewpoint || metarData.dewpoint?.celsius || metarData.dewpoint_c
         },
         wind: {
           degrees: parsedData.windDir || metarData.wind?.degrees || metarData.wind_direction?.value,
@@ -248,70 +251,124 @@ function parseRawMetar(raw) {
         now.getMonth(),
         day,
         hour,
-        minute,
-        0  // seconds
+        minute
       ));
-      
-      // Handle month rollover (if the day is greater than today, it's from last month)
-      if (day > now.getDate()) {
-        date.setUTCMonth(date.getUTCMonth() - 1);
-      }
-      
       result.time = date.toISOString();
     }
-    // Wind
+    
+    // Wind (format: dddssKT or dddssGssKT, e.g., 08014KT or 08014G20KT)
     else if (part.endsWith('KT')) {
-      const wind = part.slice(0, -2);
-      if (wind === 'VRB') {
-        result.windDir = 'VRB';
-        result.windSpeed = parseInt(wind.slice(3));
-      } else {
-        result.windDir = parseInt(wind.slice(0, 3));
-        result.windSpeed = parseInt(wind.slice(3));
-        if (wind.includes('G')) {
-          result.windGust = parseInt(wind.split('G')[1]);
+      const windRegex = /^(\d{3})(\d{2,3})(G(\d{2,3}))?KT$/;
+      const match = part.match(windRegex);
+      if (match) {
+        result.windDir = parseInt(match[1]);
+        result.windSpeed = parseInt(match[2]);
+        result.windGust = match[4] ? parseInt(match[4]) : null;
+      }
+    }
+    
+    // Visibility (format: digit/digit or digit, e.g., 1/2SM or 10SM)
+    else if (part.endsWith('SM')) {
+      const visRegex = /^(\d+|\d+\/\d+)SM$/;
+      if (visRegex.test(part)) {
+        const visStr = part.replace('SM', '');
+        if (visStr.includes('/')) {
+          const [numerator, denominator] = visStr.split('/').map(Number);
+          result.visibility = numerator / denominator;
+        } else {
+          result.visibility = parseFloat(visStr);
         }
       }
     }
-    // Visibility
-    else if (part.endsWith('SM')) {
-      result.visibility = parseFloat(part.slice(0, -2));
-    }
-    // Temperature/Dewpoint
-    else if (part.includes('/')) {
-      const [temp, dew] = part.split('/');
-      result.temp = parseInt(temp);
-      result.dewpoint = parseInt(dew);
-    }
-    // Altimeter
-    else if (part.startsWith('A')) {
-      result.altimeter = parseFloat(part.slice(1)) / 100;
-    }
-    // Cloud layers
+    
+    // Clouds (format: XXXDDD e.g., FEW005 or BKN030CB)
     else if (cloudTypes.some(type => part.startsWith(type))) {
-      if (part === 'CLR' || part === 'SKC') {
-        result.clouds = [];  // Clear skies
+      // Extract cloud coverage (e.g., FEW, SCT, BKN, OVC)
+      const coverage = part.slice(0, 3);
+      
+      // Extract height - consider parts with CB or TCU suffix
+      let heightStr = '';
+      if (part.includes('CB') || part.includes('TCU')) {
+        heightStr = part.slice(3, -2); // Remove coverage and CB/TCU suffix
       } else {
-        const coverage = part.slice(0, 3);
-        const height = parseInt(part.slice(3)) * 100;
-        result.clouds.push({
-          coverage,
-          base_feet_agl: height
-        });
+        heightStr = part.slice(3);
       }
+      
+      // Convert height from hundreds of feet to feet
+      const height = parseInt(heightStr) * 100;
+      
+      // Add to clouds array
+      result.clouds.push({
+        coverage,
+        base_feet_agl: height
+      });
+    }
+    
+    // Temperature/Dewpoint (format: tt/dd or -tt/-dd, e.g., 16/14 or M01/M05)
+    else if (/^(M?\d{1,2})\/(M?\d{1,2})$/.test(part)) {
+      const [tempStr, dewStr] = part.split('/');
+      // Handle negative temperatures (preceded by M)
+      result.temp = tempStr.startsWith('M') ? -parseInt(tempStr.slice(1)) : parseInt(tempStr);
+      result.dewpoint = dewStr.startsWith('M') ? -parseInt(dewStr.slice(1)) : parseInt(dewStr);
+    }
+    
+    // Altimeter setting (format: Adddd, e.g., A3015)
+    else if (/^A\d{4}$/.test(part)) {
+      result.altimeter = parseFloat((parseInt(part.slice(1)) / 100).toFixed(2));
     }
   });
+  
+  // Determine flight category
+  result.category = determineFlightCategory(result.visibility, result.clouds);
 
   return result;
 }
 
 // Helper function to determine flight category based on visibility
-function determineFlightCategory(visibility) {
-  if (!visibility) return 'UNKNOWN';
-  if (visibility >= 5) return 'VFR';
-  if (visibility >= 3) return 'MVFR';
-  if (visibility >= 1) return 'IFR';
-  return 'LIFR';
+function determineFlightCategory(visibility, clouds = []) {
+  // Extract the ceiling (lowest broken or overcast layer)
+  let ceiling = null;
+  if (clouds && clouds.length > 0) {
+    const significantClouds = clouds.filter(cloud => 
+      cloud.coverage === 'BKN' || cloud.coverage === 'OVC'
+    );
+    
+    if (significantClouds.length > 0) {
+      // Sort by altitude and take the lowest
+      significantClouds.sort((a, b) => a.base_feet_agl - b.base_feet_agl);
+      ceiling = significantClouds[0].base_feet_agl;
+    }
+  }
+
+  // Parse visibility if it's an object
+  let visibilityValue = visibility;
+  if (typeof visibility === 'object' && visibility !== null) {
+    visibilityValue = visibility.miles || visibility.miles_float || 0;
+  }
+
+  // If we have no data, return UNKNOWN
+  if (!visibilityValue && !ceiling) return 'UNKNOWN';
+
+  // Apply flight category rules
+  // 1. LIFR: Ceiling less than 500 feet AGL and/or visibility less than 1 mile
+  if ((ceiling !== null && ceiling < 500) || visibilityValue < 1) {
+    return 'LIFR';
+  }
+  
+  // 2. IFR: Ceiling 500 to less than 1,000 feet AGL and/or visibility 1 to less than 3 miles
+  if ((ceiling !== null && ceiling >= 500 && ceiling < 1000) || 
+      (visibilityValue >= 1 && visibilityValue < 3)) {
+    return 'IFR';
+  }
+  
+  // 3. MVFR: Ceiling 1,000 to 3,000 feet AGL and/or visibility 3 to 5 miles
+  if ((ceiling !== null && ceiling >= 1000 && ceiling <= 3000) || 
+      (visibilityValue >= 3 && visibilityValue <= 5)) {
+    return 'MVFR';
+  }
+  
+  // 4. VFR: Ceiling greater than 3,000 feet AGL and visibility greater than 5 miles
+  return 'VFR';
 }
 
 /**
@@ -401,22 +458,31 @@ export const fetchTaf = async (icao) => {
 // Export mock data functions for testing
 export const getMockMetar = (icao) => ({
   data: [{
-    raw: `METAR ${icao} 010000Z 18010KT 10SM FEW050 21/16 A3001 RMK AO2`,
+    raw: `METAR ${icao} 010000Z 18010KT 3SM OVC005 21/16 A3001 RMK AO2`,
     station: { 
       icao, 
       name: `${icao} Airport` 
     },
-    flight_category: 'VFR',
+    flight_category: 'IFR',
     temp: {
       celsius: 21
+    },
+    dewpoint: {
+      celsius: 16
     },
     wind: {
       degrees: 180,
       speed_kts: 10
     },
     visibility: {
-      miles: 10
+      miles: 3
     },
+    clouds: [
+      {
+        coverage: 'OVC',
+        base_feet_agl: 500
+      }
+    ],
     timestamp: new Date().toISOString()
   }]
 });
@@ -699,10 +765,16 @@ export const fetchMapData = async () => {
           throw new Error('No METAR data available');
         }
         
+        const data = metarData.data[0];
+        
+        // Ensure flight category is correctly calculated based on ceiling and visibility
+        const flightCategory = determineFlightCategory(data.visibility, data.clouds);
+        
         // Combine airport location with weather data
         return {
           ...airport,
-          ...metarData.data[0]
+          ...data,
+          flight_category: flightCategory  // Override with recalculated flight category
         };
       } catch (err) {
         debugLog(`Error fetching data for ${airport.icao}:`, err);
