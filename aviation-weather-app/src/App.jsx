@@ -61,11 +61,18 @@ function AppContent() {
       
       setMetar(metarData.data[0]);
       setTaf(tafData.data[0]);
+      
+      // Return the data for use in other components like FlightPlanning
+      return {
+        metar: metarData.data[0],
+        taf: tafData.data[0]
+      };
     } catch (err) {
       console.error('Search error:', err);
       setError(err.message || 'Failed to fetch weather data');
       setMetar(null);
       setTaf(null);
+      throw err; // Rethrow to allow handling in calling components
     } finally {
       setLoading(false);
     }
@@ -124,7 +131,11 @@ function AppContent() {
   } else if (activeTab === 'map') {
     mainContent = <WeatherMap isActive={activeTab === 'map'} />;
   } else if (activeTab === 'flight-planning') {
-    mainContent = <FlightPlanning onSearch={handleSearch} />;
+    mainContent = (
+      <LoadingIndicator isLoading={loading}>
+        <FlightPlanning onSearch={handleSearch} />
+      </LoadingIndicator>
+    );
   }
   
   return (

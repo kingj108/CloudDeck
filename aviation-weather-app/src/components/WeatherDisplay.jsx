@@ -11,7 +11,7 @@ const flightCategoryColors = {
   LIFR: '#FF69B4', // Pink
 };
 
-export default function WeatherDisplay({ metar, taf, favorites, onToggleFavorite, onRefresh, isRefreshing }) {
+export default function WeatherDisplay({ metar, taf, favorites, onToggleFavorite, onRefresh, isRefreshing, compact }) {
   const [isFavorite, setIsFavorite] = useState(false);
   const [showRawMetar, setShowRawMetar] = useState(false);
   const [showRawTaf, setShowRawTaf] = useState(false);
@@ -62,45 +62,69 @@ export default function WeatherDisplay({ metar, taf, favorites, onToggleFavorite
     return raw.replace(/\n/g, '\n'); // Ensure newlines are preserved
   };
 
-  const windSpeed = metar.wind_speed_kt ? parseInt(metar.wind_speed_kt, 10) : 0;
+  const windSpeed = metar?.wind_speed_kt ? parseInt(metar.wind_speed_kt, 10) : 0;
   let windClass = 'text-green-600';
   if (windSpeed > 30) windClass = 'text-red-500';
   else if (windSpeed > 15) windClass = 'text-yellow-500';
 
   useEffect(() => {
     if (favorites && metar) {
-      setIsFavorite(favorites.includes(metar.station_id));
+      setIsFavorite(favorites?.includes(metar.station_id));
     }
   }, [favorites, metar]);
 
   const handleToggleFavorite = () => {
-    onToggleFavorite(metar.station_id);
-    setIsFavorite(!isFavorite);
+    if (onToggleFavorite) {
+      onToggleFavorite(metar.station_id);
+      setIsFavorite(!isFavorite);
+    }
   };
 
+  // If no METAR data is provided, show an error message
+  if (!metar || !metar.raw) {
+    return (
+      <div className="text-center p-4 text-gray-500">
+        No weather data available
+      </div>
+    );
+  }
+
+  // Determine the container class based on whether we're in compact mode
+  const containerClass = compact 
+    ? "weather-display bg-white rounded-lg space-y-3" 
+    : "pt-20 px-6";
+
+  const contentClass = compact 
+    ? "" 
+    : "weather-display bg-white p-6 rounded-lg shadow-lg space-y-4 max-w-4xl mx-auto";
+
   return (
-    <div className="pt-20 px-6">
-      <div className="weather-display bg-white p-6 rounded-lg shadow-lg space-y-4 max-w-4xl mx-auto">
+    <div className={containerClass}>
+      <div className={contentClass}>
         {/* Header */}
         <div className="flex justify-between items-start">
-          <h2 className="text-2xl font-bold text-gray-800">
+          <h2 className="text-xl font-bold text-gray-800">
             {metar.station?.name || metar.station?.icao || 'Weather Data'}
           </h2>
           <div className="flex space-x-2">
-            <button 
-              onClick={onRefresh}
-              disabled={isRefreshing}
-              className={`p-1 ${isRefreshing ? 'text-gray-400' : 'text-blue-600 hover:text-blue-800'}`}
-              title={isRefreshing ? 'Refreshing...' : 'Refresh data'}
-            >
-              {isRefreshing ? '⏳' : '🔄'}
-            </button>
-            <button 
-              onClick={handleToggleFavorite}
-              className={`favorite-btn text-xl ${isFavorite ? 'active' : ''}`}
-            >
-              ★
-            </button>
+            {onRefresh && (
+              <button 
+                onClick={onRefresh}
+                disabled={isRefreshing}
+                className={`p-1 ${isRefreshing ? 'text-gray-400' : 'text-blue-600 hover:text-blue-800'}`}
+                title={isRefreshing ? 'Refreshing...' : 'Refresh data'}
+              >
+                {isRefreshing ? '⏳' : '🔄'}
+              </button>
+            )}
+            {onToggleFavorite && (
+              <button 
+                onClick={handleToggleFavorite}
+                className={`favorite-btn text-xl ${isFavorite ? 'active' : ''}`}
+              >
+                ★
+              </button>
+            )}
           </div>
         </div>
         
@@ -152,46 +176,48 @@ export default function WeatherDisplay({ metar, taf, favorites, onToggleFavorite
         </div>
         
         {/* TAF Display */}
-        <div className="taf-section">
-          <div className="flex justify-between items-center mb-1">
-            <h3 className="font-bold text-lg">TAF</h3>
-            <button 
-              onClick={() => setShowRawTaf(!showRawTaf)}
-              className={`px-3 py-1 rounded-md text-sm font-medium ${showRawTaf 
-                ? 'bg-blue-800 text-white border border-white' 
-                : 'bg-white text-blue-800 border border-blue-800'}`}
-            >
-              {showRawTaf ? 'Show Parsed' : 'Show Raw'}
-            </button>
-          </div>
-          
-          {showRawTaf ? (
-            <div className="font-mono bg-blue-50 p-3 rounded text-sm whitespace-pre-wrap">
-              {formatRawData(taf?.raw)}
+        {taf && taf.raw && (
+          <div className="taf-section">
+            <div className="flex justify-between items-center mb-1">
+              <h3 className="font-bold text-lg">TAF</h3>
+              <button 
+                onClick={() => setShowRawTaf(!showRawTaf)}
+                className={`px-3 py-1 rounded-md text-sm font-medium ${showRawTaf 
+                  ? 'bg-blue-800 text-white border border-white' 
+                  : 'bg-white text-blue-800 border border-blue-800'}`}
+              >
+                {showRawTaf ? 'Show Parsed' : 'Show Raw'}
+              </button>
             </div>
-          ) : (
-            <>
-              {parsedTaf ? (
-                <div className="font-mono bg-blue-50 p-2 rounded">
-                  <div><span className="font-semibold">Station:</span> {parsedTaf.station}</div>
-                  <div><span className="font-semibold">Issued:</span> {parsedTaf.issued}</div>
-                  <div><span className="font-semibold">Valid:</span> {parsedTaf.validPeriod}</div>
-                  
-                  {parsedTaf.forecast?.map((fc, i) => (
-                    <div key={i} className="mt-2 p-1 border-t border-blue-100">
-                      <div className="font-semibold">{fc.changeIndicator}</div>
-                      <div className="text-sm">{fc.conditions}</div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <pre className="font-mono bg-blue-50 p-2 rounded whitespace-pre-wrap">
-                  {taf?.raw}
-                </pre>
-              )}
-            </>
-          )}
-        </div>
+            
+            {showRawTaf ? (
+              <div className="font-mono bg-blue-50 p-3 rounded text-sm whitespace-pre-wrap">
+                {formatRawData(taf?.raw)}
+              </div>
+            ) : (
+              <>
+                {parsedTaf ? (
+                  <div className="font-mono bg-blue-50 p-2 rounded">
+                    <div><span className="font-semibold">Station:</span> {parsedTaf.station}</div>
+                    <div><span className="font-semibold">Issued:</span> {parsedTaf.issued}</div>
+                    <div><span className="font-semibold">Valid:</span> {parsedTaf.validPeriod}</div>
+                    
+                    {parsedTaf.forecast?.map((fc, i) => (
+                      <div key={i} className="mt-2 p-1 border-t border-blue-100">
+                        <div className="font-semibold">{fc.changeIndicator}</div>
+                        <div className="text-sm">{fc.conditions}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <pre className="font-mono bg-blue-50 p-2 rounded whitespace-pre-wrap">
+                    {taf?.raw}
+                  </pre>
+                )}
+              </>
+            )}
+          </div>
+        )}
         
         {/* Additional METAR Data */}
         <ul className="mt-2 list-disc list-inside space-y-1">
