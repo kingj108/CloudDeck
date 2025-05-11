@@ -7,6 +7,7 @@ CloudDeck is a modern web application designed to provide pilots and aviation en
 - **Weather Information**
   - Real-time weather data
   - METAR/TAF reports
+  - Interactive weather map with flight categories
   - Weather radar visualization
   - Wind conditions and forecasts
 
@@ -29,6 +30,7 @@ CloudDeck is a modern web application designed to provide pilots and aviation en
 
 - Frontend: React + Vite
 - Styling: Tailwind CSS
+- Mapping: React-Leaflet
 - Authentication: Custom implementation with future Google OAuth
 - Testing: Jest
 - Deployment: Netlify
@@ -81,6 +83,10 @@ aviation-weather-app/
 │   └── App.jsx        # Main application component
 ├── public/            # Static assets
 ├── dist/             # Production build
+├── docs/             # Documentation
+│   ├── weather-features.md    # Weather features documentation
+│   ├── map-technical-guide.md # Map technical documentation
+│   └── ...           # Other documentation files
 └── config files      # Configuration files
 ```
 
@@ -95,6 +101,16 @@ The application uses a secure authentication system with the following features:
 - Password confirmation
 - Error handling and validation
 - Google Sign-In (implementation in progress)
+
+## 🗺️ Weather Map
+
+The application features an interactive weather map that displays real-time aviation weather conditions:
+- Color-coded markers showing flight categories (VFR, MVFR, IFR, LIFR)
+- Detailed weather information in popups
+- Auto-refreshing data
+- Responsive design
+
+For more details, see the [Weather Features Documentation](docs/weather-features.md) and [Map Technical Guide](docs/map-technical-guide.md).
 
 ## 🤝 Contributing
 
@@ -125,9 +141,11 @@ Contact the project maintainers for access to development API keys.
 
 ## 📚 Additional Resources
 
-- [Weather API Documentation](link-to-docs)
-- [Contributing Guidelines](link-to-contributing)
-- [Code of Conduct](link-to-code-of-conduct)
+- [Weather Features Documentation](docs/weather-features.md)
+- [Map Technical Guide](docs/map-technical-guide.md)
+- [Authentication Documentation](docs/authentication.md)
+- [Development Guide](docs/development-guide.md)
+- [API Reference](docs/api-reference.md)
 
 ## 📄 License
 
