@@ -15,8 +15,9 @@ const FLIGHT_CATEGORY_COLORS = {
  * @param {Object} props - Component props
  * @param {string} props.category - The flight category (VFR, MVFR, IFR, LIFR)
  * @param {string} props.size - Size of the indicator (sm, md, lg)
+ * @param {boolean} props.colorText - Whether to color the text (default: true)
  */
-function FlightCategoryIndicator({ category = 'VFR', size = 'md' }) {
+function FlightCategoryIndicator({ category = 'VFR', size = 'md', colorText = true }) {
   const normalizedCategory = category.toUpperCase();
   const color = FLIGHT_CATEGORY_COLORS[normalizedCategory] || FLIGHT_CATEGORY_COLORS.VFR;
   
@@ -35,7 +36,9 @@ function FlightCategoryIndicator({ category = 'VFR', size = 'md' }) {
         className={`rounded-full ${dotClass} mr-1`} 
         style={{ backgroundColor: color }}
       ></div>
-      <span>{normalizedCategory}</span>
+      <span style={colorText ? { color: color, fontWeight: 'bold' } : {}}>
+        {normalizedCategory}
+      </span>
     </div>
   );
 }

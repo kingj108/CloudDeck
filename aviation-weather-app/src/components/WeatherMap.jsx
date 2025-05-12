@@ -96,7 +96,14 @@ export default function WeatherMap({ isActive }) {
 
   // Format the weather details for popup
   const formatWeatherDetails = (airport) => {
-    const temp = airport.temp?.celsius !== undefined ? `${airport.temp.celsius}°C` : 'N/A';
+    // Format temperature with both Celsius and Fahrenheit
+    let tempDisplay = 'N/A';
+    if (airport.temp?.celsius !== undefined) {
+      const celsius = airport.temp.celsius;
+      const fahrenheit = Math.round((celsius * 9/5) + 32);
+      tempDisplay = `${celsius}°C (${fahrenheit}°F)`;
+    }
+    
     const wind = airport.wind ? 
       `${airport.wind.degrees || 0}° @ ${airport.wind.speed_kts || 0}${airport.wind.gust_kts ? 'G' + airport.wind.gust_kts : ''} kt` 
       : 'Calm';
@@ -104,16 +111,23 @@ export default function WeatherMap({ isActive }) {
       `${airport.visibility.miles >= 10 ? '10+' : airport.visibility.miles} mi` 
       : 'N/A';
     const clouds = formatCloudLayers(airport.clouds);
+    const category = airport.flight_category || 'UNKNOWN';
+    const categoryColor = flightCategoryColors[category] || flightCategoryColors.UNKNOWN;
 
     return (
       <div className="text-sm">
         <div className="font-bold mb-1">{airport.icao}</div>
         <div className="text-gray-600 mb-2">{airport.name}</div>
-        <div><strong>Temperature:</strong> {temp}</div>
+        <div><strong>Temperature:</strong> {tempDisplay}</div>
         <div><strong>Wind:</strong> {wind}</div>
         <div><strong>Visibility:</strong> {visibility}</div>
         <div><strong>Clouds:</strong> {clouds}</div>
-        <div><strong>Category:</strong> {airport.flight_category}</div>
+        <div>
+          <strong>Category:</strong>{' '}
+          <span style={{ color: categoryColor, fontWeight: 'bold' }}>
+            {category}
+          </span>
+        </div>
       </div>
     );
   };
@@ -138,14 +152,14 @@ export default function WeatherMap({ isActive }) {
 
   if (loading && !mapData.length) {
     return (
-      <div className="p-4 flex justify-center">
+      <div className="pt-20 p-4 flex justify-center">
         <div className="animate-pulse text-gray-600">Loading map data...</div>
       </div>
     );
   }
 
   return (
-    <div className="p-4">
+    <div className="pt-20 p-4">
       <h2 className="text-xl font-semibold mb-4">Weather Map</h2>
 
       {/* Legend and last update time */}
@@ -165,7 +179,9 @@ export default function WeatherMap({ isActive }) {
                 className="w-4 h-4 rounded-full mr-1"
                 style={{ backgroundColor: color, border: '2px solid white' }}
               ></div>
-              <span className="text-sm">{category}</span>
+              <span className="text-sm" style={{ color, fontWeight: 'bold' }}>
+                {category}
+              </span>
             </div>
           ))}
         </div>

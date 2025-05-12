@@ -228,12 +228,12 @@ export default function WeatherDisplay({ metar, taf, favorites, onToggleFavorite
           <li>Altimeter: {formatAltimeter(parsedMetar?.altimeter)}</li>
           <li className="flex items-center">
             <span>Category: </span>
-            <div className="flex items-center ml-2">
-              <div 
-                className="w-4 h-4 rounded-full mr-1" 
-                style={{ backgroundColor: flightCategoryColors[metar.flight_category] || '#808080' }}
-              ></div>
-              <span>{metar.flight_category}</span>
+            <div className="ml-2">
+              <FlightCategoryIndicator 
+                category={metar.flight_category} 
+                size="md" 
+                colorText={true} 
+              />
             </div>
           </li>
         </ul>
