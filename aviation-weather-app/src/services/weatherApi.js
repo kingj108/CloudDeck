@@ -106,12 +106,17 @@ export const fetchMetar = async (icao) => {
     const rawMetar = typeof metarData === 'string' ? metarData : metarData.raw;
     const parsedData = parseRawMetar(rawMetar);
     
+    // Get airport coordinates from our airport database or API
+    const airportCoords = getAirportCoordinates(icaoUpper);
+    
     const result = {
       data: [{
         raw: rawMetar,
         station: {
           icao: icaoUpper,
-          name: metarData.station?.name || icaoUpper
+          name: metarData.station?.name || icaoUpper,
+          lat: airportCoords.lat || metarData.station?.latitude || metarData.latitude,
+          lon: airportCoords.lon || metarData.station?.longitude || metarData.longitude
         },
         flight_category: parsedData.category || metarData.flight_category || determineFlightCategory(parsedData.visibility, parsedData.clouds),
         temp: {
@@ -155,12 +160,17 @@ export const fetchMetar = async (icao) => {
       
       if (!response.ok) throw new Error('AVWX API error');
       
+      // Get airport coordinates
+      const airportCoords = getAirportCoordinates(icaoUpper);
+      
       return {
         data: [{
           raw: data.raw,
           station: {
             icao: icaoUpper,
-            name: data.station || icaoUpper
+            name: data.station || icaoUpper,
+            lat: airportCoords.lat || data.station?.latitude,
+            lon: airportCoords.lon || data.station?.longitude
           },
           flight_category: data.flight_rules || 'UNKNOWN',
           temp: {
@@ -187,12 +197,17 @@ export const fetchMetar = async (icao) => {
         
         if (!response.ok) throw new Error('FAA API error');
         
+        // Get airport coordinates
+        const airportCoords = getAirportCoordinates(icaoUpper);
+        
         return {
           data: [{
             raw: data.metar,
             station: {
               icao: icaoUpper,
-              name: data.station_id || icaoUpper
+              name: data.station_id || icaoUpper,
+              lat: airportCoords.lat,
+              lon: airportCoords.lon
             },
             flight_category: data.flight_category || 'UNKNOWN',
             temp: {
@@ -211,11 +226,82 @@ export const fetchMetar = async (icao) => {
         };
       } catch (faaError) {
         debugLog('FAA API error:', faaError);
-        // If all APIs fail, return mock data
-        return getMockMetar(icaoUpper);
+        // If all APIs fail, return mock data with coordinates
+        return getMockMetarWithCoordinates(icaoUpper);
       }
     }
   }
+};
+
+// Helper to get airport coordinates (simplified airport database)
+function getAirportCoordinates(icao) {
+  // Common airports coordinates
+  const airportDatabase = {
+    'KJFK': { lat: 40.6413, lon: -73.7781 },   // New York JFK
+    'KLAX': { lat: 33.9416, lon: -118.4085 },  // Los Angeles
+    'KORD': { lat: 41.9796, lon: -87.9045 },   // Chicago O'Hare
+    'KDFW': { lat: 32.8968, lon: -97.0380 },   // Dallas/Fort Worth
+    'KATL': { lat: 33.6367, lon: -84.4281 },   // Atlanta
+    'KBOS': { lat: 42.3656, lon: -71.0096 },   // Boston
+    'KSFO': { lat: 37.6213, lon: -122.3790 },  // San Francisco
+    'KMIA': { lat: 25.7932, lon: -80.2906 },   // Miami
+    'KDEN': { lat: 39.8561, lon: -104.6737 },  // Denver
+    'KLAS': { lat: 36.0840, lon: -115.1537 },  // Las Vegas
+    'KSEA': { lat: 47.4502, lon: -122.3088 },  // Seattle
+    'KPHX': { lat: 33.4342, lon: -112.0116 },  // Phoenix
+    'KASN': { lat: 33.1740, lon: -92.5932 },   // Talladega Municipal Airport (assuming this is the correct KASN)
+    'PHNL': { lat: 21.3245, lon: -157.9251 },  // Honolulu, Hawaii
+    'PANC': { lat: 61.1741, lon: -149.9961 },  // Anchorage, Alaska
+    'EGLL': { lat: 51.4775, lon: -0.4614 },    // London Heathrow
+    'EHAM': { lat: 52.3105, lon: 4.7683 },     // Amsterdam
+    'LFPG': { lat: 49.0097, lon: 2.5479 },     // Paris Charles de Gaulle
+    'EDDF': { lat: 50.0379, lon: 8.5622 },     // Frankfurt
+    'LEMD': { lat: 40.4983, lon: -3.5676 },    // Madrid
+    'LIRF': { lat: 41.8045, lon: 12.2508 },    // Rome Fiumicino
+    'RJAA': { lat: 35.7647, lon: 140.3864 },   // Tokyo Narita
+    'VHHH': { lat: 22.3080, lon: 113.9185 },   // Hong Kong
+    'YSSY': { lat: 33.9399, lon: 151.1753 }    // Sydney
+  };
+  
+  return airportDatabase[icao] || { lat: null, lon: null };
+}
+
+// Modified mock function that includes coordinates
+export const getMockMetarWithCoordinates = (icao) => {
+  const airportCoords = getAirportCoordinates(icao);
+  
+  return {
+    data: [{
+      raw: `${icao} 071853Z 08014KT 10SM FEW050 25/15 A3001 RMK AO2`,
+      station: {
+        icao: icao,
+        name: icao,
+        lat: airportCoords.lat,
+        lon: airportCoords.lon
+      },
+      flight_category: 'VFR',
+      temp: {
+        celsius: 25
+      },
+      dewpoint: {
+        celsius: 15
+      },
+      wind: {
+        degrees: 80,
+        speed_kts: 14
+      },
+      visibility: {
+        miles: 10
+      },
+      clouds: [
+        {
+          coverage: 'FEW',
+          base_feet_agl: 5000
+        }
+      ],
+      timestamp: new Date().toISOString()
+    }]
+  };
 };
 
 // Helper function to parse raw METAR

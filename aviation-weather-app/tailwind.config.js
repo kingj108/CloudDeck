@@ -1,44 +1,30 @@
 /** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    './index.html',
-    './src/**/*.{js,jsx,ts,tsx}',
-  ],
-  darkMode: 'media',
+const colors = require('tailwindcss/colors');
+
+module.exports = {
+  content: ['./index.html', './src/**/*.{js,jsx,ts,tsx}'],
+  // Use class strategy for dark mode to make it toggle-able
+  darkMode: 'class',
   theme: {
     extend: {
-      colors: {
-        'blue': {
-          900: '#002366',
-          800: '#003399',
-          700: '#0044cc',
-          300: '#93c5fd',
-        },
-        'sky': {
-          700: '#0369a1',
-        },
-        'indigo': {
-          800: '#3730a3',
-        }
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['Roboto Mono', 'monospace'],
       },
       animation: {
-        'pulse': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'slide-in-right': 'slideInRight 0.3s ease-out forwards',
       },
       keyframes: {
-        pulse: {
-          '0%, 100%': { opacity: 1 },
-          '50%': { opacity: 0.8 },
+        slideInRight: {
+          '0%': { transform: 'translateX(100%)', opacity: 0 },
+          '100%': { transform: 'translateX(0)', opacity: 1 },
         },
       },
-      backgroundImage: {
-        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-      },
-      fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+      colors: {
+        sky: colors.sky,
+        cyan: colors.cyan,
       },
     },
   },
-  plugins: [
-    require('@tailwindcss/forms'),
-  ],
+  plugins: [],
 };

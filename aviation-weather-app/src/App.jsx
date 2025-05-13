@@ -6,9 +6,12 @@ import WeatherMap from './components/WeatherMap';
 import FlightPlanning from './components/FlightPlanning';
 import LoadingIndicator from './components/LoadingIndicator';
 import ErrorMessage from './components/ErrorMessage';
+import Settings from './components/Settings';
 import LoginPage from './pages/LoginPage';
 import WelcomePage from './pages/WelcomePage';
 import WeatherPage from './pages/WeatherPage';
+import SettingsPage from './pages/SettingsPage';
+import { ThemeProvider } from './context/ThemeContext';
 import { fetchMetar, fetchTaf } from './services/weatherApi';
 
 // Wrap the main app content
@@ -23,6 +26,7 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState('home');
   const [favorites, setFavorites] = useState([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   
   // Auth state
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -38,6 +42,7 @@ function AppContent() {
     else if (path === '/weather') setActiveTab('weather');
     else if (path === '/map') setActiveTab('map');
     else if (path === '/flight-planning') setActiveTab('flight-planning');
+    else if (path === '/settings') setActiveTab('settings');
   }, [location]);
 
   // Search handler
@@ -105,6 +110,12 @@ function AppContent() {
     }
   };
 
+  // Clear favorites
+  const clearFavorites = () => {
+    setFavorites([]);
+    localStorage.removeItem('favorites');
+  };
+
   // Handle login
   const handleLogin = (userData) => {
     setIsLoggedIn(true);
@@ -116,6 +127,11 @@ function AppContent() {
     setIsLoggedIn(false);
     setCurrentUser(null);
     setFavorites([]);
+  };
+
+  // Handle opening settings as modal or navigating to settings page
+  const handleOpenSettings = () => {
+    navigate('/settings');
   };
   
   // Render main content based on active tab and route
@@ -143,6 +159,13 @@ function AppContent() {
         <FlightPlanning onSearch={handleSearch} />
       </LoadingIndicator>
     );
+  } else if (activeTab === 'settings') {
+    mainContent = (
+      <SettingsPage 
+        favorites={favorites}
+        clearFavorites={clearFavorites}
+      />
+    );
   }
   
   return (
@@ -151,13 +174,21 @@ function AppContent() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onSearch={handleSearch}
-        onOpenSettings={() => console.log('Settings clicked')}
+        onOpenSettings={handleOpenSettings}
         isLoggedIn={isLoggedIn}
         currentUser={currentUser}
       />
       <div className="pt-16"> {/* Add padding to account for fixed navbar */}
         {mainContent}
       </div>
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <Settings 
+          onClose={() => setShowSettings(false)} 
+          clearFavorites={clearFavorites}
+        />
+      )}
     </div>
   );
 }
@@ -165,12 +196,15 @@ function AppContent() {
 // Main App component with Router
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/*" element={<AppContent />} />
-      </Routes>
-    </Router>
+    <ThemeProvider>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/settings" element={<AppContent />} />
+          <Route path="/*" element={<AppContent />} />
+        </Routes>
+      </Router>
+    </ThemeProvider>
   );
 }
 

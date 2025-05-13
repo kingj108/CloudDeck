@@ -3,8 +3,10 @@ import WeatherDisplay from '../components/WeatherDisplay';
 import AviationBackground from '../components/AviationBackground';
 import LoadingIndicator from '../components/LoadingIndicator';
 import ErrorMessage from '../components/ErrorMessage';
+import { useTheme } from '../context/ThemeContext';
 
-export default function WeatherPage({ onSearch, metar, taf, loading, error, onRefresh, isRefreshing }) {
+export default function WeatherPage({ onSearch, metar, taf, loading, error, onRefresh, isRefreshing, favorites, onToggleFavorite }) {
+  const { darkMode } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleSubmit = (e) => {
@@ -22,6 +24,8 @@ export default function WeatherPage({ onSearch, metar, taf, loading, error, onRe
         taf={taf}
         onRefresh={onRefresh}
         isRefreshing={isRefreshing}
+        favorites={favorites}
+        onToggleFavorite={onToggleFavorite}
       />
     );
   }
@@ -38,70 +42,59 @@ export default function WeatherPage({ onSearch, metar, taf, loading, error, onRe
 
   // Show initial search state
   return (
-    <AviationBackground>
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] p-6 pt-24 text-white">
-        <div className="max-w-2xl text-center space-y-8">
-          <div className="flex items-center justify-center mb-8">
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
-              Airport Weather
-            </h1>
-          </div>
+    <div className={`min-h-[calc(100vh-4rem)] ${darkMode ? 'bg-gray-900' : 'bg-gray-100'} transition-colors duration-300`}>
+      <AviationBackground>
+        <div className="container mx-auto px-4 py-8">
+          {/* Search form is in the navbar */}
           
-          <p className="text-xl text-gray-200 max-w-xl mx-auto">
-            Enter an airport's ICAO code to get detailed METAR and TAF information
-          </p>
-
-          {/* Search Form */}
-          <div className="mt-8">
-            <form onSubmit={handleSubmit} className="flex flex-col items-center space-y-4">
-              <div className="relative w-full max-w-md">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value.toUpperCase())}
-                  placeholder="Enter ICAO code (e.g., KJFK)"
-                  className="w-full px-6 py-3 text-lg text-gray-800 bg-white rounded-lg 
-                    border-2 border-transparent focus:border-blue-400 focus:outline-none
-                    placeholder-gray-400 shadow-lg"
-                  maxLength={4}
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={!searchQuery.trim()}
-                className="px-8 py-3 bg-blue-600 text-white rounded-lg text-lg font-semibold
-                  hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50
-                  disabled:cursor-not-allowed shadow-lg"
-              >
-                Get Weather
-              </button>
-            </form>
-          </div>
-
-          {/* Popular Airports */}
-          <div className="mt-12 p-8 rounded-xl bg-white/5 backdrop-blur-sm">
-            <h3 className="text-2xl font-semibold mb-6">Popular Airports</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { code: 'KJFK', name: 'New York' },
-                { code: 'KLAX', name: 'Los Angeles' },
-                { code: 'KORD', name: 'Chicago' },
-                { code: 'KATL', name: 'Atlanta' }
-              ].map((airport) => (
-                <button
-                  key={airport.code}
-                  onClick={() => onSearch(airport.code)}
-                  className="bg-white/10 hover:bg-white/20 text-white px-4 py-3 rounded-lg
-                    transition-colors duration-200 flex flex-col items-center"
-                >
-                  <span className="text-lg font-semibold">{airport.code}</span>
-                  <span className="text-sm text-gray-300">{airport.name}</span>
-                </button>
-              ))}
+          {/* Error message */}
+          {error && (
+            <div className="mb-4">
+              <ErrorMessage message={error} />
             </div>
-          </div>
+          )}
+          
+          {/* Loading indicator */}
+          <LoadingIndicator isLoading={loading && !metar}>
+            {/* If we have METAR data, show the weather display */}
+            {metar ? (
+              <WeatherDisplay
+                metar={metar}
+                taf={taf}
+                onRefresh={onRefresh}
+                isRefreshing={isRefreshing}
+                favorites={favorites}
+                onToggleFavorite={onToggleFavorite}
+              />
+            ) : !loading && !error ? (
+              <div className="text-center p-12">
+                <div className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-md inline-block max-w-md">
+                  <h2 className="text-xl font-semibold mb-4 dark:text-white">Welcome to Weather</h2>
+                  <p className="text-gray-600 dark:text-gray-300">
+                    Search for an airport code in the search box above to view 
+                    current weather conditions and forecasts.
+                  </p>
+                  <div className="mt-8 grid grid-cols-2 gap-4">
+                    {['KJFK', 'KLAX', 'KORD', 'EGLL'].map(code => (
+                      <button
+                        key={code}
+                        onClick={() => onSearch(code)}
+                        className={`px-4 py-2 rounded-md ${
+                          darkMode 
+                            ? 'bg-gray-700 hover:bg-gray-600 text-white' 
+                            : 'bg-blue-100 hover:bg-blue-200 text-blue-800'
+                        }`}
+                      >
+                        {code}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </LoadingIndicator>
         </div>
-      </div>
-    </AviationBackground>
+      </AviationBackground>
+    </div>
   );
 } 
