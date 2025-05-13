@@ -11,6 +11,7 @@ import LoginPage from './pages/LoginPage';
 import WelcomePage from './pages/WelcomePage';
 import WeatherPage from './pages/WeatherPage';
 import SettingsPage from './pages/SettingsPage';
+import GlossaryPage from './pages/GlossaryPage';
 import { ThemeProvider } from './context/ThemeContext';
 import { fetchMetar, fetchTaf } from './services/weatherApi';
 
@@ -43,6 +44,7 @@ function AppContent() {
     else if (path === '/map') setActiveTab('map');
     else if (path === '/flight-planning') setActiveTab('flight-planning');
     else if (path === '/settings') setActiveTab('settings');
+    else if (path === '/glossary') setActiveTab('glossary');
   }, [location]);
 
   // Search handler
@@ -166,6 +168,8 @@ function AppContent() {
         clearFavorites={clearFavorites}
       />
     );
+  } else if (activeTab === 'glossary') {
+    mainContent = <GlossaryPage />;
   }
   
   return (
@@ -201,6 +205,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/settings" element={<AppContent />} />
+          <Route path="/glossary" element={<AppContent />} />
           <Route path="/*" element={<AppContent />} />
         </Routes>
       </Router>

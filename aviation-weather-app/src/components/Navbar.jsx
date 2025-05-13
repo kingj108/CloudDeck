@@ -87,6 +87,17 @@ export default function Navbar({
             >
               Flight Planning
             </button>
+            <button
+              onClick={() => {
+                setActiveTab('glossary');
+                navigate('/glossary');
+              }}
+              className={`text-sm font-medium transition-colors ${
+                activeTab === 'glossary' ? 'text-white' : `${darkMode ? 'text-blue-400 hover:text-white' : 'text-blue-300 hover:text-white'}`
+              }`}
+            >
+              Glossary
+            </button>
           </div>
 
           <div className="flex items-center space-x-4">
