@@ -94,6 +94,35 @@ export default function WeatherMap({ isActive }) {
     }).join(', ');
   };
 
+  // Format visibility with fractions
+  const formatVisibility = (visibility) => {
+    if (!visibility || visibility.miles === undefined) return 'N/A';
+    
+    // Handle 10+ miles visibility
+    if (visibility.miles >= 10) {
+      return '10+ mi';
+    }
+    
+    // Convert decimal values to fractions for common values
+    const value = visibility.miles;
+    if (value === 0.25) return '1/4 mi';
+    if (value === 0.5) return '1/2 mi';
+    if (value === 0.75) return '3/4 mi';
+    if (value === 1.25) return '1 1/4 mi';
+    if (value === 1.5) return '1 1/2 mi';
+    if (value === 1.75) return '1 3/4 mi';
+    if (value === 2.5) return '2 1/2 mi';
+    if (value === 2.75) return '2 3/4 mi';
+    
+    // For values with decimal parts that aren't common fractions, display with one decimal place
+    if (value % 1 !== 0) {
+      return `${value.toFixed(1)} mi`;
+    }
+    
+    // For whole numbers, display as integers
+    return `${value} mi`;
+  };
+
   // Format the weather details for popup
   const formatWeatherDetails = (airport) => {
     // Format temperature with both Celsius and Fahrenheit
@@ -107,9 +136,7 @@ export default function WeatherMap({ isActive }) {
     const wind = airport.wind ? 
       `${airport.wind.degrees || 0}° @ ${airport.wind.speed_kts || 0}${airport.wind.gust_kts ? 'G' + airport.wind.gust_kts : ''} kt` 
       : 'Calm';
-    const visibility = airport.visibility?.miles !== undefined ? 
-      `${airport.visibility.miles >= 10 ? '10+' : airport.visibility.miles} mi` 
-      : 'N/A';
+    const visibility = formatVisibility(airport.visibility);
     const clouds = formatCloudLayers(airport.clouds);
     const category = airport.flight_category || 'UNKNOWN';
     const categoryColor = flightCategoryColors[category] || flightCategoryColors.UNKNOWN;

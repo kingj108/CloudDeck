@@ -53,7 +53,30 @@ export default function WeatherDisplay({ metar, taf, favorites, onToggleFavorite
   // Format visibility
   const formatVisibility = (vis) => {
     if (!vis) return 'N/A';
-    return vis.miles >= 10 ? '10+ mi' : `${vis.miles} mi`;
+    
+    // Handle 10+ miles visibility
+    if (vis.miles >= 10) {
+      return '10+ mi';
+    }
+    
+    // Convert decimal values to fractions for common values
+    const value = vis.miles;
+    if (value === 0.25) return '1/4 mi';
+    if (value === 0.5) return '1/2 mi';
+    if (value === 0.75) return '3/4 mi';
+    if (value === 1.25) return '1 1/4 mi';
+    if (value === 1.5) return '1 1/2 mi';
+    if (value === 1.75) return '1 3/4 mi';
+    if (value === 2.5) return '2 1/2 mi';
+    if (value === 2.75) return '2 3/4 mi';
+    
+    // For values with decimal parts that aren't common fractions, display with one decimal place
+    if (value % 1 !== 0) {
+      return `${value.toFixed(1)} mi`;
+    }
+    
+    // For whole numbers, display as integers
+    return `${value} mi`;
   };
 
   // Format raw data for display
@@ -142,6 +165,33 @@ export default function WeatherDisplay({ metar, taf, favorites, onToggleFavorite
     return `${prefix}${timeOnly} ${timezone}`;
   };
 
+  // Format TAF visibility
+  const formatTafVisibility = (visibility) => {
+    if (!visibility) return 'N/A';
+    
+    // Handle P6SM (more than 6 statute miles)
+    if (visibility.isPlus) return '6+ sm';
+    
+    // Convert decimal values to fractions for common values
+    const value = visibility.miles;
+    if (value === 0.25) return '1/4 sm';
+    if (value === 0.5) return '1/2 sm';
+    if (value === 0.75) return '3/4 sm';
+    if (value === 1.25) return '1 1/4 sm';
+    if (value === 1.5) return '1 1/2 sm';
+    if (value === 1.75) return '1 3/4 sm';
+    if (value === 2.5) return '2 1/2 sm';
+    if (value === 2.75) return '2 3/4 sm';
+    
+    // For values with decimal parts that aren't common fractions, display with one decimal place
+    if (value % 1 !== 0) {
+      return `${value.toFixed(1)} sm`;
+    }
+    
+    // For whole numbers, display as integers
+    return `${value} sm`;
+  };
+
   // Format TAF conditions
   const formatTafConditions = (conditions) => {
     if (!conditions) return null;
@@ -210,7 +260,7 @@ export default function WeatherDisplay({ metar, taf, favorites, onToggleFavorite
           <div>
             <div className="font-semibold">Visibility</div>
             <div>
-              {conditions.visibility.isPlus ? '6+' : conditions.visibility.miles} sm
+              {formatTafVisibility(conditions.visibility)}
             </div>
           </div>
         )}
