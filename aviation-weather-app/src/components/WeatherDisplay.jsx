@@ -80,6 +80,236 @@ export default function WeatherDisplay({ metar, taf, favorites, onToggleFavorite
     }
   };
 
+  // Format TAF time with better readability
+  const formatTafTime = (date, lat, lon) => {
+    if (!date) return '';
+    
+    const now = new Date();
+    const localTime = getLocalTime(date, lat, lon);
+    
+    // Skip timezone detection if not found properly
+    if (!localTime || localTime === 'N/A' || localTime === 'Invalid Date') {
+      // Fallback to simple formatting
+      const timeOptions = { 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        hour12: true,
+        timeZoneName: 'short'
+      };
+      const dateOptions = {
+        month: 'numeric',
+        day: 'numeric'
+      };
+      
+      return `${date.toLocaleDateString('en-US', dateOptions)} at ${date.toLocaleTimeString('en-US', timeOptions)}`;
+    }
+    
+    // Extract date and time portions
+    const timeParts = localTime.split(' ');
+    const timeOnly = timeParts.slice(-2).join(' '); // Time and AM/PM
+    
+    // Calculate day difference for "TODAY", "TOMORROW", etc.
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+    
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+    
+    const diffDays = Math.round((targetDate - today) / (1000 * 60 * 60 * 24));
+    
+    let prefix = '';
+    if (diffDays < 0) {
+      // If it's a date in the past, use the actual date
+      const options = { month: 'short', day: 'numeric' };
+      prefix = date.toLocaleDateString('en-US', options).toUpperCase() + ' AT ';
+    } else if (diffDays === 0) {
+      prefix = 'TODAY AT ';
+    } else if (diffDays === 1) {
+      prefix = 'TOMORROW AT ';
+    } else {
+      // Get the day of the week if it's further in the future
+      const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+      prefix = `${dayOfWeek} AT `;
+    }
+    
+    // Extract timezone abbreviation
+    let timezone = 'EDT'; // Default
+    const tzMatch = localTime.match(/[A-Z]{2,4}$/);
+    if (tzMatch) {
+      timezone = tzMatch[0];
+    }
+    
+    return `${prefix}${timeOnly} ${timezone}`;
+  };
+
+  // Format TAF conditions
+  const formatTafConditions = (conditions) => {
+    if (!conditions) return null;
+    
+    // Flight category colors
+    const categoryColors = {
+      VFR: '#3CB371',  // Green
+      MVFR: '#4169E1', // Blue
+      IFR: '#FF4500',  // Red
+      LIFR: '#FF69B4'  // Pink
+    };
+    
+    // Get color for flight category
+    const getCategoryColor = (category) => {
+      return categoryColors[category] || '#6B7280'; // Default gray if not found
+    };
+    
+    // Convert cloud coverage codes to readable text
+    const formatCloudCoverage = (code) => {
+      switch (code) {
+        case 'FEW': return 'Few';
+        case 'SCT': return 'Scattered';
+        case 'BKN': return 'Broken';
+        case 'OVC': return 'Overcast';
+        case 'SKC':
+        case 'CLR': return 'Clear';
+        default: return code;
+      }
+    };
+    
+    // Format wind direction to handle variable winds
+    const formatWindDirection = (wind) => {
+      if (!wind) return '';
+      if (wind.direction === 'VRB') return 'Variable';
+      if (wind.degrees === 0 || wind.degrees >= 360) return 'N';
+      return wind.degrees + '°';
+    };
+    
+    const categoryColor = getCategoryColor(conditions.flight_category);
+    
+    return (
+      <div className="space-y-2">
+        <div className="font-bold text-lg text-center flex items-center justify-center">
+          <span 
+            className="inline-block w-3 h-3 rounded-full mr-2" 
+            style={{ backgroundColor: categoryColor }}
+          ></span>
+          <span style={{ color: categoryColor }}>
+            {conditions.flight_category}
+          </span>
+        </div>
+        
+        {/* Wind */}
+        {conditions.wind && (
+          <div>
+            <div className="font-semibold">Wind</div>
+            <div>
+              {formatWindDirection(conditions.wind)} at {conditions.wind.speed_kts}
+              {conditions.wind.gust_kts ? ` - ${conditions.wind.gust_kts}` : ''} kts
+            </div>
+          </div>
+        )}
+        
+        {/* Visibility */}
+        {conditions.visibility && (
+          <div>
+            <div className="font-semibold">Visibility</div>
+            <div>
+              {conditions.visibility.isPlus ? '6+' : conditions.visibility.miles} sm
+            </div>
+          </div>
+        )}
+        
+        {/* Clouds */}
+        {conditions.clouds && conditions.clouds.length > 0 ? (
+          <div>
+            <div className="font-semibold">Clouds (AGL)</div>
+            <div>
+              {conditions.clouds.map((cloud, i) => (
+                <div key={i}>
+                  {formatCloudCoverage(cloud.coverage)} {Math.round(cloud.base_feet_agl/1000)},000'
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div className="font-semibold">Clouds (AGL)</div>
+            <div>Clear</div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Format TAF forecast
+  const formatTafForecast = (taf, lat, lon) => {
+    if (!taf || !taf.forecast || taf.forecast.length === 0) {
+      return (
+        <div className="p-3 rounded-lg bg-yellow-50 border border-yellow-200">
+          <p className="text-yellow-700">No forecast periods available in the TAF data.</p>
+        </div>
+      );
+    }
+    
+    const periods = taf.forecast;
+    
+    // Set expiration times - each period expires when the next one begins
+    for (let i = 0; i < periods.length - 1; i++) {
+      if (!periods[i].expires) {
+        periods[i].expires = periods[i + 1].changeTime;
+      }
+    }
+    
+    // The last period expires at the end of the valid period
+    if (periods.length > 0) {
+      const lastPeriod = periods[periods.length - 1];
+      if (!lastPeriod.expires && taf.validPeriodTimes?.end) {
+        lastPeriod.expires = taf.validPeriodTimes.end;
+      }
+    }
+    
+    // Find the current period
+    const now = new Date();
+    let currentPeriod = -1;
+    
+    for (let i = 0; i < periods.length; i++) {
+      if (periods[i].changeTime && periods[i].expires) {
+        if (now >= periods[i].changeTime && now < periods[i].expires) {
+          currentPeriod = i;
+          break;
+        }
+      }
+    }
+    
+    // If no current period was found, use the first one if it's in the future
+    if (currentPeriod === -1 && periods[0].changeTime && now < periods[0].changeTime) {
+      currentPeriod = 0;
+    }
+    
+    return periods.map((period, i) => {
+      const isCurrent = i === currentPeriod;
+      
+      return (
+        <div key={i} className={`mt-4 p-3 border rounded-lg ${isCurrent ? 
+          'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
+          <div className="font-bold text-lg mb-2">
+            {formatTafTime(period.changeTime, lat, lon)}
+            {isCurrent && (
+              <span className="ml-2 text-sm bg-blue-200 text-blue-800 px-2 py-1 rounded">
+                CURRENT
+              </span>
+            )}
+          </div>
+          
+          {formatTafConditions(period)}
+          
+          {period.expires && (
+            <div className="mt-2 text-sm text-gray-500">
+              <div className="font-semibold">Expires</div>
+              <div>{formatTafTime(period.expires, lat, lon)}</div>
+            </div>
+          )}
+        </div>
+      );
+    });
+  };
+
   // If no METAR data is provided, show an error message
   if (!metar || !metar.raw) {
     return (
@@ -201,13 +431,7 @@ export default function WeatherDisplay({ metar, taf, favorites, onToggleFavorite
                     <div><span className="font-semibold">Station:</span> {parsedTaf.station}</div>
                     <div><span className="font-semibold">Issued:</span> {parsedTaf.issued}</div>
                     <div><span className="font-semibold">Valid:</span> {parsedTaf.validPeriod}</div>
-                    
-                    {parsedTaf.forecast?.map((fc, i) => (
-                      <div key={i} className="mt-2 p-1 border-t border-blue-100">
-                        <div className="font-semibold">{fc.changeIndicator}</div>
-                        <div className="text-sm">{fc.conditions}</div>
-                      </div>
-                    ))}
+                    {formatTafForecast(parsedTaf, metar.station?.lat, metar.station?.lon)}
                   </div>
                 ) : (
                   <pre className="font-mono bg-blue-50 p-2 rounded whitespace-pre-wrap">

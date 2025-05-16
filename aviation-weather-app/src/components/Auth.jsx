@@ -8,7 +8,7 @@ export default function Auth({ onLogin, onLogout, isLoggedIn, currentUser }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
-
+//validate password requirements
   const validatePassword = (pass) => {
     const hasMinLength = pass.length >= 6;
     const hasUpperCase = /[A-Z]/.test(pass);
