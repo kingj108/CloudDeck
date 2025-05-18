@@ -13,7 +13,7 @@ export default function Navbar({
   currentUser
 }) {
   const [zuluTime, setZuluTime] = useState(getZuluTime());
-  const { darkMode } = useTheme();
+  const { darkMode, toggleDarkMode } = useTheme();
   const navigate = useNavigate();
 
   // Update Zulu time every second
@@ -117,6 +117,14 @@ export default function Navbar({
                 Login
               </button>
             )}
+            <button
+              onClick={toggleDarkMode}
+              className={`${darkMode ? 'text-blue-400 hover:text-white' : 'text-blue-300 hover:text-white'} transition-colors`}
+              aria-label="Toggle dark mode"
+            >
+              <span className="sr-only">Toggle dark mode</span>
+              {darkMode ? '☀️' : '🌙'}
+            </button>
             <button
               onClick={onOpenSettings}
               className={`${darkMode ? 'text-blue-400 hover:text-white' : 'text-blue-300 hover:text-white'} transition-colors`}
