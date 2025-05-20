@@ -122,7 +122,7 @@ export default function Navbar({
               className={`${darkMode ? 'text-blue-400 hover:text-white' : 'text-blue-300 hover:text-white'} transition-colors`}
               aria-label="Toggle dark mode"
             >
-              <span className="sr-only">Toggle dark mode</span>
+              <span className="sr-only">Toggle dark mode</span>  {/* This is for screen readers */}
               {darkMode ? '☀️' : '🌙'}
             </button>
             <button
