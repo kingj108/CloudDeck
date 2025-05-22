@@ -15,6 +15,7 @@ The `WeatherMap` component is a core feature of CloudDeck that visualizes aviati
 - **React Leaflet**: Map rendering library
 - **Leaflet**: Core mapping library
 - **React Hooks**: useState, useEffect, useMemo for state management
+- **Tailwind CSS**: Styling and layout
 
 ## Component Architecture
 
@@ -78,8 +79,38 @@ const fetchWeatherData = async () => {
 #### Data Formatting
 ```jsx
 const formatWeatherDetails = (airport) => {
-  // Formats raw airport data into user-friendly display format
-  // Returns JSX for popup content
+  // Format temperature with both Celsius and Fahrenheit
+  let tempDisplay = 'N/A';
+  if (airport.temp?.celsius !== undefined) {
+    const celsius = airport.temp.celsius;
+    const fahrenheit = Math.round((celsius * 9/5) + 32);
+    tempDisplay = `${celsius}°C (${fahrenheit}°F)`;
+  }
+  
+  const wind = airport.wind ? 
+    `${airport.wind.degrees || 0}° @ ${airport.wind.speed_kts || 0}${airport.wind.gust_kts ? 'G' + airport.wind.gust_kts : ''} kt` 
+    : 'Calm';
+  const visibility = formatVisibility(airport.visibility);
+  const clouds = formatCloudLayers(airport.clouds);
+  const category = airport.flight_category || 'UNKNOWN';
+  const categoryColor = flightCategoryColors[category] || flightCategoryColors.UNKNOWN;
+
+  return (
+    <div className="text-sm">
+      <div className="font-bold mb-1">{airport.icao}</div>
+      <div className="text-gray-600 mb-2">{airport.name}</div>
+      <div><strong>Temperature:</strong> {tempDisplay}</div>
+      <div><strong>Wind:</strong> {wind}</div>
+      <div><strong>Visibility:</strong> {visibility}</div>
+      <div><strong>Clouds:</strong> {clouds}</div>
+      <div>
+        <strong>Category:</strong>{' '}
+        <span style={{ color: categoryColor, fontWeight: 'bold' }}>
+          {category}
+        </span>
+      </div>
+    </div>
+  );
 };
 ```
 
@@ -114,7 +145,7 @@ useEffect(() => {
 
 1. Component mounts or becomes active
 2. `fetchWeatherData()` is called
-3. API request is made to fetch weather data
+3. API request is made to fetch weather data for all major airports
 4. Response is processed and stored in state
 5. Data is formatted and rendered on the map
 6. Auto-refresh interval is set up
@@ -126,10 +157,13 @@ useEffect(() => {
 - Uses `useMemo` to prevent unnecessary re-renders of formatted data
 - Only fetches data when the component is active
 - Cleans up intervals when component is inactive or unmounts
+- Parallel fetching of weather data for multiple airports
+- Caching of weather data for 5 minutes
 
 ### Potential Bottlenecks
 - Large datasets with many airports can slow rendering
 - Frequent API calls may hit rate limits
+- Network latency when fetching data for multiple airports
 
 ## Customization Options
 
@@ -153,63 +187,37 @@ The auto-refresh interval is defined as a constant:
 const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
 ```
 
-## Extension Points
+## Map Features
 
-### Adding New Map Layers
-To add additional map layers:
-
-1. Import the required components from react-leaflet:
-```jsx
-import { LayersControl } from 'react-leaflet';
-```
-
-2. Define the layer in the render method:
-```jsx
-<LayersControl position="topright">
-  <LayersControl.BaseLayer name="OpenStreetMap" checked>
-    <TileLayer
-      attribution={'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}
-      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-    />
-  </LayersControl.BaseLayer>
-  <LayersControl.BaseLayer name="Satellite">
-    <TileLayer
-      url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-      attribution="&copy; Esri"
-    />
-  </LayersControl.BaseLayer>
-</LayersControl>
-```
-
-### Adding Weather Overlays
-To add weather overlays like precipitation:
-
-1. Create a new component for the overlay
-2. Use the Leaflet API to add the overlay to the map
-3. Add it as an overlay in the LayersControl
+### Base Map
+The map uses OpenStreetMap as the base layer:
 
 ```jsx
-<LayersControl.Overlay name="Precipitation">
-  <PrecipitationLayer />
-</LayersControl.Overlay>
+<TileLayer
+  attribution={'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}
+  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+/>
 ```
 
-## Common Issues and Solutions
+### Airport Markers
+- Each airport is represented by a colored dot marker
+- Color indicates flight category
+- Clicking a marker shows a popup with detailed weather information
+- Markers are positioned using airport coordinates from the MAJOR_AIRPORTS list
 
-### Markers Not Appearing
-- Check that the latitude and longitude data is valid
-- Verify the data format from the API
-- Ensure the map is centered on a region with data
+### Legend
+The map includes a legend showing:
+- Flight category colors
+- Last update time
+- Interactive controls for map zoom and pan
 
-### Performance Issues
-- Limit the number of markers rendered at once
-- Use clustering for dense marker groups
-- Implement virtualization for large datasets
+## Error Handling
 
-### API Rate Limiting
-- Implement caching of weather data
-- Increase the refresh interval
-- Add error handling for rate limit responses
+The component implements several error handling mechanisms:
+1. Graceful degradation when weather data is unavailable
+2. Visual error indicators for failed data fetches
+3. Fallback to cached data when available
+4. Automatic retry on data fetch failures
 
 ## Testing
 
@@ -218,6 +226,7 @@ To add weather overlays like precipitation:
 2. Check that popups display correct information
 3. Test auto-refresh functionality
 4. Verify error handling works correctly
+5. Test map interaction (zoom, pan, marker clicks)
 
 ### Automated Testing
 Example test case using Jest and React Testing Library:
@@ -242,9 +251,13 @@ test('displays loading state when fetching data', () => {
 3. Wind barbs on markers
 4. Route planning tools
 5. Historical data visualization
+6. Custom airport selection
+7. Weather alerts overlay
 
 ### Code Improvements
 1. Separate marker rendering into a dedicated component
 2. Implement React context for weather data
 3. Add TypeScript type definitions
-4. Improve error handling and retry logic 
+4. Improve error handling and retry logic
+5. Add unit tests for data formatting functions
+6. Implement progressive loading for large datasets 
