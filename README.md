@@ -5,27 +5,28 @@ CloudDeck is a web app that provides real-time METARs, TAFs, and airport weather
 
 CloudDeck is a modern web application that provides real-time aviation weather data for airports worldwide. Designed with pilots, dispatchers, and aviation enthusiasts in mind, it delivers up-to-date METARs, TAFs, and a visual weather map, all wrapped in a responsive and intuitive interface.
 
-🌐 Features
-🔍 Search by ICAO Code – Instantly look up live METAR and TAF reports for any airport.
+-Features
+ Search by ICAO Code – Instantly look up live METAR and TAF reports for any airport.
 
-🌤️ Live Weather Data – Real-time aviation weather from trusted APIs.
+ Live Weather Data – Real-time aviation weather from trusted APIs.
 
-💾 Favorite Airports – Save frequently checked airports for quick access.
+ Favorite Airports – Save frequently checked airports for quick access.
 
-🗺️ Weather Map View – Visualize current airport weather conditions.
+ Weather Map View – Visualize current airport weather conditions.
 
-🧪 Mock Data Mode – Toggle mock data for testing or demo purposes.
+ Mock Data Mode – Toggle mock data for testing or demo purposes.
 
-📱 Fully Responsive – Seamless experience on mobile, tablet, and desktop.
+ Fully Responsive – Seamless experience on mobile, tablet, and desktop.
 
-🧰 Tech Stack
+-Tech Stack
+
 Frontend: React, Tailwind CSS
 
 API Integration: Custom weatherApi service for METAR and TAF data
 
 Component-Based Design: Clean and reusable components (Navbar, WeatherDisplay, WeatherMap, etc.)
 
-🚀 Getting Started
+ Getting Started
 Clone the repository:
 
 bash
@@ -58,16 +59,17 @@ Edit
 ├── App.jsx               # Main application logic and layout
 ├── index.html            # Root HTML
 └── main.jsx              # Entry point
-🧪 Mock Data
+
+-Mock Data
 You can toggle mock data in the UI for demo/testing purposes. This is useful when the API is down or rate-limited.
 
-📸 Social Preview
+-Social Preview
 
-🗺️ Map Data Attribution
+-Map Data Attribution
 Map data is provided by OpenStreetMap.
 © OpenStreetMap contributors. Data is available under the Open Database License.
 
-📄 License
+-License
 MIT License — feel free to fork, build, and fly with it 🚁
 
 Let me know if you'd like the README exported to a .md file or want to add contributor info, a changelog, or deploy instructions (e.g. Vercel, Netlify).
